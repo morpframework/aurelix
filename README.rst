@@ -51,7 +51,7 @@ Set following contents in ``mymodel.yaml``::
 
     views:
       extensions:
-        - '+custom-view':
+        - '/+custom-view':
             method: GET
             handler:
               function: myviews:myview
