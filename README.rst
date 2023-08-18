@@ -24,7 +24,7 @@ Set following contents in ``myviews.py``::
 
    async def myview(request: Request):
        return {
-          'hello': 'world
+          'hello': 'world'
        }
 
 Set following contents in ``mymodel.yaml``::
