@@ -41,11 +41,6 @@ Set following contents in `mymodel.yaml`::
         required: true
         indexed: true
 
-    views:
-      create:
-        enabled: false
-      update:
-        enabled: false
     stateMachine:
       initialState: new
       field: workflowStatus
