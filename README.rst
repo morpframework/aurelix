@@ -11,15 +11,23 @@ Create a directory with following structure::
     - models/
     `- mymodel.yaml
     - libs/
+    `- myviews.py
 
-Set following contents in `app.yaml`::
+Set following contents in ``app.yaml``::
 
     title: MyApp
     databases:
     - name: default
       url: sqlite:///./database.sqlite
 
-Set following contents in `mymodel.yaml`::
+Set following contents in ``myviews.py``::
+
+   async def myview(request: Request):
+       return {
+          'hello': 'world
+       }
+
+Set following contents in ``mymodel.yaml``::
 
     name: mymodel
     storageType:
@@ -40,6 +48,13 @@ Set following contents in `mymodel.yaml`::
           size: 64
         required: true
         indexed: true
+
+    views:
+      extensions:
+        - '+custom-view':
+            method: GET
+            handler:
+              function: myviews:myview
 
     stateMachine:
       initialState: new
