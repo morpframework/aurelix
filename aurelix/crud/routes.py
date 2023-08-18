@@ -3,7 +3,7 @@ import pydantic
 import typing
 import math
 from fastapi.responses import RedirectResponse
-from ..db.model import CoreModel
+
 from ..utils import snake_to_pascal, snake_to_human, item_json
 
 class SearchResultLinks(pydantic.BaseModel):
@@ -30,7 +30,8 @@ class SimpleMessage(pydantic.BaseModel):
 def register_collection(app, Collection, create_enabled=True, read_enabled=True, 
                         update_enabled=True, delete_enabled=True, listing_enabled=True, 
                         openapi_extra=None):
-    
+
+    from .lowcode import CoreModel
     openapi_extra = openapi_extra or {}
     collection_name = Collection.name
     Schema = Collection.Schema

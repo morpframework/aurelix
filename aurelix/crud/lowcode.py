@@ -6,11 +6,9 @@ import yaml
 import sqlalchemy as sa
 import pydantic
 import importlib
-from ..db.model import table as create_table
 from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine
-from ..db.model import CoreModel
 from ..crud.routes import register_collection
 from ..exc import SearchException, AurelixException
 from typing import Any
@@ -19,6 +17,8 @@ import enum
 import typing
 import transitions 
 import glob
+import databases
+import datetime
 
 PY_TYPES = {
     'string': str,
@@ -34,9 +34,45 @@ SA_TYPES={
     'boolean': sa.Boolean
 }
 
+APP_STATE = {
+    'app': None,
+    'engines': {},
+    'databases': {}
+}
+
+
+def create_table(name, metadata, columns=None, indexes=None, constraints=None, *args):
+    columns = columns or []
+    indexes = indexes or []
+    constraints = constraints or []
+
+    columns = [
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('dateCreated', sa.DateTime, default=datetime.datetime.utcnow, index=True),
+        sa.Column('dateModified', sa.DateTime, default=datetime.datetime.utcnow, index=True),
+        sa.Column('creator', sa.String, nullable=True, index=True),
+        sa.Column('editor', sa.String, nullable=True, index=True),
+    ] + columns
+
+    return sa.Table(
+        name,
+        metadata,
+        *columns,
+        *indexes,
+        *args
+    )
+
+
+class CoreModel(pydantic.BaseModel):
+    id: int | None = None
+    dateCreated: datetime.datetime | None = None
+    dateModified: datetime.datetime | None = None
+    creator: str | None = None
+    editor: str | None = None
+
 class StorageTypeSpec(pydantic.BaseModel):
     name: str
-    connId: str
+    database: str
 
 class EnumSpec(pydantic.BaseModel):
     value: str
@@ -124,7 +160,14 @@ class ModelSpec(pydantic.BaseModel):
     transformUpdateData: CodeRefSpec | None = None 
     transformOutputData: CodeRefSpec | None = None
 
+class DatabaseSpec(pydantic.BaseModel):
+
+    name: str
+    url: str 
+
 class AppSpec(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(protected_namespaces=())
+
     debug: bool = False
     title: str = "Aether"
     summary: str|None = None
@@ -133,7 +176,9 @@ class AppSpec(pydantic.BaseModel):
     redoc_url: str | None = None
     swagger_ui_oauth2_redirect_url: str = '/oauth2-redirect'
     terms_of_service: str | None = None
-    model_directory: str | None = None
+    model_directory: str = 'models'
+    libs_directory: str = 'libs'
+    databases: list[DatabaseSpec] | None = None
 
 class Registry(dict):
 
@@ -147,8 +192,7 @@ class Registry(dict):
         del self[__name]
     
 def load_app(path: str):
-    from ..db import metadata # FIXME: should load dynamic from spec
-    from ..db import engine
+
     with open(path) as f:
         spec: AppSpec = AppSpec.model_validate(yaml.safe_load(f))
 
@@ -156,12 +200,39 @@ def load_app(path: str):
     app = fastapi.FastAPI(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
                           docs_url=spec.docs_url, redoc_url=spec.redoc_url, swagger_ui_oauth2_redirect_url=spec.swagger_ui_oauth2_redirect_url,
                           terms_of_service=spec.terms_of_service)
-    load_app_models(app, os.path.join(spec_dir, spec.model_directory))
+    APP_STATE['app'] = app
+    APP_STATE['settings'] = spec
+
+    if spec.libs_directory:
+        ld_path = os.path.join(spec_dir, spec.libs_directory)
+        if os.path.exists(ld_path):
+            sys.path.append(ld_path)
+
+    for d in spec.databases:
+        metadata = sa.MetaData()
+        engine = sa.create_engine(
+            d.url, connect_args={"check_same_thread": False}
+        )
+        db = databases.Database(d.url)
+        APP_STATE['databases'][d.name] = {
+            'metadata': metadata,
+            'engine': engine,
+            'db': db
+        }
+
+    if spec.model_directory:
+        md_path = os.path.join(spec_dir, spec.model_directory)
+        if os.path.exists(md_path):
+            load_app_models(app, md_path)
     register_exception_views(app)
 
-    metadata.create_all(engine)
-
     return app
+
+def db_upgrade(app: fastapi.FastAPI):
+    for m in APP_STATE['databases'].values():
+        metadata = m['metadata']
+        engine = m['engine']
+        metadata.create_all(engine)
 
 
 def load_app_models(app, directory_path):
@@ -259,7 +330,7 @@ def generate_sqlalchemy_collection(spec: ModelSpec,
                                    schema: type[pydantic.BaseModel], 
                                    table: sa.Table,
                                    name: str='Collection'):
-    from ..db import database
+    database = APP_STATE['databases'][spec.storageType.database]['db']
     def constructor(self, request):
         SQLACollection.__init__(self, request, database=database, table=table)
 
@@ -306,7 +377,7 @@ def generate_pydantic_model(spec: ModelSpec, name: str = 'Schema'):
 
 @validate_types
 def generate_sqlalchemy_table(spec: ModelSpec) -> sa.Table:
-    from ..db import metadata # FIXME: should load dynamic from spec
+    metadata = APP_STATE['databases'][spec.storageType.database]['metadata']
     columns = []
     constraints = []
     for field_name, field_spec in spec.fields.items():
