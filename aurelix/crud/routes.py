@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 import pydantic
 import typing
 import math
+import enum
 from fastapi.responses import RedirectResponse
 
 from ..utils import snake_to_pascal, snake_to_human, item_json
@@ -128,11 +129,11 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
     if hasattr(Collection, 'StateMachine'):
 
         ModelTransition = pydantic.create_model(Schema.__name__ + 'Transition', 
-            trigger=(str, None),
+            trigger=(enum.StrEnum('Trigger', [t['trigger'] for t in Collection.StateMachine.transitions]), None),
             data=(dict[str, typing.Any] | None, None)
         )
         @Collection.view('/{identifier}/+transition', method='POST', openapi_extra=openapi_extra, summary='Trigger state update for %s' % snake_to_human(collection_name))
-        async def transition(request: Request, identifier: str, col: Collection, model: Model, transition: ModelTransition):
+        async def transition(request: Request, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> SimpleMessage:
             await col.trigger(model, transition.trigger, data=transition.data)
             await col.update(identifier, model)
             return {
