@@ -1,4 +1,5 @@
 import fastapi
+from fastapi.responses import JSONResponse
 import os
 import sys
 import yaml
@@ -11,7 +12,9 @@ from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine
 from ..db.model import CoreModel
 from ..crud.routes import register_collection
+from ..exc import SearchException, AurelixException
 from typing import Any
+import sqlite3
 import enum
 import typing
 import transitions 
@@ -121,6 +124,17 @@ class ModelSpec(pydantic.BaseModel):
     transformUpdateData: CodeRefSpec | None = None 
     transformOutputData: CodeRefSpec | None = None
 
+class AppSpec(pydantic.BaseModel):
+    debug: bool = False
+    title: str = "Aether"
+    summary: str|None = None
+    version: str = '0.1.0'
+    docs_url: str = '/'
+    redoc_url: str | None = None
+    swagger_ui_oauth2_redirect_url: str = '/oauth2-redirect'
+    terms_of_service: str | None = None
+    model_directory: str | None = None
+
 class Registry(dict):
 
     def __getattr__(self, __key: Any) -> Any:
@@ -132,6 +146,24 @@ class Registry(dict):
     def __delattr__(self, __name: str) -> None:
         del self[__name]
     
+def load_app(path: str):
+    from ..db import metadata # FIXME: should load dynamic from spec
+    from ..db import engine
+    with open(path) as f:
+        spec: AppSpec = AppSpec.model_validate(yaml.safe_load(f))
+
+    spec_dir = os.path.dirname(path)
+    app = fastapi.FastAPI(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
+                          docs_url=spec.docs_url, redoc_url=spec.redoc_url, swagger_ui_oauth2_redirect_url=spec.swagger_ui_oauth2_redirect_url,
+                          terms_of_service=spec.terms_of_service)
+    load_app_models(app, os.path.join(spec_dir, spec.model_directory))
+    register_exception_views(app)
+
+    metadata.create_all(engine)
+
+    return app
+
+
 def load_app_models(app, directory_path):
     app.collection = Registry()
     for fn in glob.glob('*.yaml', root_dir=directory_path):
@@ -314,3 +346,27 @@ def get_sa_column(field_name: str, field_spec: FieldSpec):
     ]
     return sa.Column(*args, **kwargs)
 
+
+def register_exception_views(app):
+    @app.exception_handler(SearchException)
+    async def search_exception_handler(request: fastapi.Request, exc: SearchException):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.message},
+        )
+    
+    @app.exception_handler(sqlite3.IntegrityError)
+    async def integrity_exception_handler(request: fastapi.Request, exc: Exception):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": str(exc)},
+        )
+    
+    @app.exception_handler(transitions.core.MachineError)
+    async def sm_exception_handler(request: fastapi.Request, exc: Exception):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.value},
+        )
+    
+    
