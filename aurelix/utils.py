@@ -5,11 +5,6 @@ import fastapi
 def validate_types(func):
     return pydantic.validate_call(config={'arbitrary_types_allowed': True})(func)
 
-class Tags(enum.Enum):
-    datasource = 'Data Source Management'
-    sourcecatalog = 'Source Dataset Catalog'
-    profiling = 'Data Profiling'
-
 def snake_to_pascal(snake):
     return ''.join([k.capitalize() for k in snake.split('_')])
 

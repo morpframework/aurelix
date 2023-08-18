@@ -4,6 +4,7 @@ from ..utils import validate_types
 import pydantic
 import fastapi
 import datetime
+from ..exc import SearchException
 
 class StateMachine(object):
 
@@ -25,14 +26,6 @@ class StateMachine(object):
         setattr(self.item, self.field, value)
 
     state = property(get_state, set_state)
-
-class AetherException(Exception):
-    def __init__(self, message, *args):
-        self.message = message
-        super().__init__(*args)
-
-class SearchException(AetherException):
-    pass
 
 class ViewAction(dectate.Action):
     config = {

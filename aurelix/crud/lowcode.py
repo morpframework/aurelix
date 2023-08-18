@@ -6,7 +6,7 @@ import sqlalchemy as sa
 import pydantic
 import importlib
 from ..db.model import table as create_table
-from ..utils import validate_types, snake_to_pascal, snake_to_camel, Tags
+from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine
 from ..db.model import CoreModel
@@ -142,9 +142,7 @@ def load_app_models(app, directory_path):
 
         openapi_extra = {}
         if spec.tags:
-            openapi_extra['tags'] = [
-                getattr(Tags, t, t) for t in spec.tags        
-            ]
+            openapi_extra['tags'] = spec.tags
         register_collection(app, res['collection'], 
             listing_enabled=spec.views.listing.enabled,
             create_enabled=spec.views.create.enabled,
@@ -176,7 +174,7 @@ def load_model_spec(path: str):
     if spec.views.extensions:
         views = spec.views.extensions
         for vpath, vspec in views.items():
-            tags = [getattr(Tags, t, t) for t in vspec.tags]
+            tags = vspec.tags
             view_opts = dict((k,v) for k,v in vspec.model_dump().items() if k not in ['handler', 'tags'])
             if tags and view_opts.get('openapi_extra', None):
                 view_opts['openapi_extra']['tags'] = tags
