@@ -10,9 +10,10 @@ from transitions import Machine
 import typing
 
 
-from .base import BaseCollection,SearchException
+from .base import Collection
+from ..exc import SearchException
 
-class SQLACollection(BaseCollection):
+class SQLACollection(Collection):
 
 
     @validate_types

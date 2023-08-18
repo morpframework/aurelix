@@ -1,5 +1,6 @@
 import fastapi
 from fastapi.responses import JSONResponse
+import inspect
 import os
 import sys
 import yaml
@@ -10,7 +11,9 @@ from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine
 from ..crud.routes import register_collection
-from ..exc import SearchException, AurelixException
+from ..exc import AurelixException
+from .. import exc
+from .base import Collection, get_collection_from_request
 from typing import Any
 import sqlite3
 import enum
@@ -69,6 +72,19 @@ class CoreModel(pydantic.BaseModel):
     dateModified: datetime.datetime | None = None
     creator: str | None = None
     editor: str | None = None
+
+async def get_model(request: fastapi.Request, collection: Collection):
+    if not 'identifier' in request.path_params:
+        raise exc.AurelixException(r'{identifier} parameter is required on this route to resolve model')
+    identifier = request.path_params['identifier']
+    if identifier.startswith('+'):
+        raise exc.RecordNotFoundException(identifier)
+    obj = await collection.get(identifier)
+    if not obj:
+        raise exc.RecordNotFoundException(identifier)
+    return obj
+
+Model = typing.Annotated[CoreModel, fastapi.Depends(get_model)]
 
 class StorageTypeSpec(pydantic.BaseModel):
     name: str
@@ -349,7 +365,7 @@ def generate_sqlalchemy_collection(spec: ModelSpec,
             impl = load_code_ref(coderef)
             if impl:
                 attrs[m] = impl
-    return type(name, (SQLACollection, ), attrs)
+    return typing.Annotated[type(name, (SQLACollection, ), attrs), fastapi.Depends(get_collection_from_request)]
 
 @validate_types
 def generate_pydantic_model(spec: ModelSpec, name: str = 'Schema'):
@@ -371,7 +387,7 @@ def generate_pydantic_model(spec: ModelSpec, name: str = 'Schema'):
     
     return pydantic.create_model(
         name, 
-        __base__=CoreModel, 
+        __base__=Model, 
         **fields
     )
 
@@ -419,10 +435,10 @@ def get_sa_column(field_name: str, field_spec: FieldSpec):
 
 
 def register_exception_views(app):
-    @app.exception_handler(SearchException)
-    async def search_exception_handler(request: fastapi.Request, exc: SearchException):
+    @app.exception_handler(AurelixException)
+    async def search_exception_handler(request: fastapi.Request, exc: AurelixException):
         return JSONResponse(
-            status_code=422,
+            status_code=exc.status_code,
             content={"detail": exc.message},
         )
     

@@ -31,7 +31,7 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
                         update_enabled=True, delete_enabled=True, listing_enabled=True, 
                         openapi_extra=None):
 
-    from .lowcode import CoreModel
+    from .lowcode import Model
     openapi_extra = openapi_extra or {}
     collection_name = Collection.name
     Schema = Collection.Schema
@@ -60,7 +60,7 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
 
     ModelInput = pydantic.create_model(
         Schema.__name__ + 'Input',
-        **dict([(k,(v.annotation, v.default)) for k,v in Schema.model_fields.items() if k not in CoreModel.model_fields.keys()])
+        **dict([(k,(v.annotation, v.default)) for k,v in Schema.model_fields.items() if k not in Model.model_fields.keys()])
     )
 
 
@@ -104,38 +104,20 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
 
     if read_enabled:
         @Collection.view('/{identifier}', method='GET', openapi_extra=openapi_extra, summary='Get %s' % snake_to_human(collection_name))
-        async def read(request: Request, identifier: str) -> ModelResult:
-            if identifier.startswith('+'):
-                raise HTTPException(status_code=404, detail='Not Found')
-            col = Collection(request)
-            item = await col.get(identifier)
-            if item == None:
-                raise HTTPException(status_code=404, detail='Not Found')
+        async def read(request: Request, col: Collection, model: Model, identifier: str) -> ModelResult:
             return ModelResult.model_validate({
-                'data': await item_json(col, item)
+                'data': await item_json(col, model)
             })
 
     if update_enabled:
         @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
-        async def update(request: Request, identifier: str, item: ModelInput) -> ModelResult:
-            if identifier.startswith('+'):
-                raise HTTPException(status_code=404, detail='Not Found')
-            exist = await Collection(request).get(identifier)
-            if exist == None:
-                raise HTTPException(status_code=404, detail='Not Found')
-            col = Collection(request)
+        async def update(request: Request, identifier: str, col:Collection, model: Model, item: ModelInput) -> ModelResult:
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
     
     if delete_enabled:
         @Collection.view('/{identifier}', method='DELETE', openapi_extra=openapi_extra, summary='Delete %s' % snake_to_human(collection_name))
-        async def delete(request: Request, identifier: str, confirmation: DeleteConfirmation) -> SimpleMessage:
-            if identifier.startswith('+'):
-                raise HTTPException(status_code=404, detail='Not Found')
-            col = Collection(request)
-            item = await col.get(identifier)
-            if item == None:
-                raise HTTPException(status_code=404, detail='Not Found')
+        async def delete(request: Request, identifier: str, col: Collection, model: Model, confirmation: DeleteConfirmation) -> SimpleMessage:
             if confirmation.delete:
                 result = await col.delete(identifier)
                 return {
@@ -150,15 +132,9 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
             data=(dict[str, typing.Any] | None, None)
         )
         @Collection.view('/{identifier}/+transition', method='POST', openapi_extra=openapi_extra, summary='Trigger state update for %s' % snake_to_human(collection_name))
-        async def transition(request: Request, identifier: str, transition: ModelTransition):
-            if identifier.startswith('+'):
-                raise HTTPException(status_code=404, detail='Not Found')
-            col = Collection(request)
-            item = await col.get(identifier)
-            if item == None:
-                raise HTTPException(status_code=404, detail='Not Found')
-            await col.trigger(item, transition.trigger, data=transition.data)
-            await col.update(identifier, item)
+        async def transition(request: Request, identifier: str, col: Collection, model: Model, transition: ModelTransition):
+            await col.trigger(model, transition.trigger, data=transition.data)
+            await col.update(identifier, model)
             return {
                 'detail': 'OK'
             }

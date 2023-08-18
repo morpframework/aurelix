@@ -4,7 +4,8 @@ from ..utils import validate_types
 import pydantic
 import fastapi
 import datetime
-from ..exc import SearchException
+from .. import exc
+import typing
 
 class StateMachine(object):
 
@@ -48,7 +49,7 @@ class ViewAction(dectate.Action):
                 'function': obj
         }
 
-class BaseCollection(dectate.App):
+class Collection(dectate.App):
     name: str
     Schema: type[pydantic.BaseModel]
     StateMachine: type[StateMachine]
@@ -178,8 +179,19 @@ class BaseCollection(dectate.App):
     def model_validate(self, obj):
         return self.Schema.model_validate(obj)
 
-def get_collection(request:fastapi.Request, name: str) -> BaseCollection: 
+def get_collection(request:fastapi.Request, name: str) -> Collection: 
     return request.app.collection[name](request)
 
 def get_schema(request: fastapi.Request, name: str) -> type[pydantic.BaseModel]:
     return request.app.collection[name].Schema
+
+def get_collection_from_request(request: fastapi.Request):
+    comps = request.url.path.split('/')
+    if len(comps) < 2:
+        raise exc.CollectionNotFoundException(request.url.path)
+    collection_name = comps[1]
+    if not collection_name in request.app.collection:
+        raise exc.CollectionNotFoundException(request.url.path)
+    return request.app.collection[collection_name](request)
+
+Collection = typing.Annotated[Collection, fastapi.Depends(get_collection_from_request)]
