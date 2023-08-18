@@ -22,10 +22,12 @@ Set following contents in ``app.yaml``::
 
 Set following contents in ``myviews.py``::
 
-   async def myview(request: Request):
-       return {
-          'hello': 'world'
-       }
+    from fastapi import Request
+
+    async def myview(request: Request):
+        return {
+           'hello': 'world'
+        }
 
 Set following contents in ``mymodel.yaml``::
 
