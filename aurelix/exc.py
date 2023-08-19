@@ -9,7 +9,10 @@ class SearchException(AurelixException):
     status_code = 422
 
 class GatewayError(AurelixException):
-    status_code = 503
+    status_code = 502
+
+class Unauthorized(AurelixException):
+    status_code = 401
 
 class CollectionNotFoundException(AurelixException):
     status_code = 404

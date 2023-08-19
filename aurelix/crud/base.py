@@ -5,6 +5,7 @@ import pydantic
 import fastapi
 import datetime
 from .. import exc
+from ..dependencies import get_userinfo_from_request
 import typing
 
 class StateMachine(object):
@@ -13,7 +14,8 @@ class StateMachine(object):
     states: list[str]
     transitions: list[dict[str, str | list[str]]]
 
-    def __init__(self, item):
+    def __init__(self, request: fastapi.Request, item):
+        self.request = request
         self.item = item
         self.machine = AsyncMachine(self, 
                                states=self.states, 
@@ -136,6 +138,8 @@ class BaseCollection(dectate.App):
         # delete protected fields
         for k in ['id']:
             if k in data: del data[k]
+        userinfo = await get_userinfo_from_request(self.request)
+        data['creator'] = userinfo.email
         data['dateCreated'] = datetime.datetime.utcnow()
         data['dateModified'] = datetime.datetime.utcnow()
         return data
@@ -148,6 +152,8 @@ class BaseCollection(dectate.App):
         # delete protected fields
         for k in ['id']:
             if k in data: del data[k]
+        userinfo = await get_userinfo_from_request(self.request)
+        data['editor'] = userinfo.email
         data['dateModified'] = datetime.datetime.utcnow()
         return data
 
@@ -173,7 +179,7 @@ class BaseCollection(dectate.App):
         pass
 
     async def trigger(self, item, trigger, **kwargs):
-        sm = self.StateMachine(item)
+        sm : StateMachine = self.StateMachine(self.request, item)
         return await sm.trigger(trigger, **kwargs)
 
     def model_validate(self, obj):

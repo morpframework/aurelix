@@ -105,24 +105,24 @@ class DatabaseSpec(pydantic.BaseModel):
     name: str
     url: str 
 
-class OAuth2Scheme(enum.StrEnum):
-    PASSWORD = 'password'
+class InitOAuthSpec(pydantic.BaseModel):
+    client_id: str 
+    client_secret: str
 
 class AppSpec(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(protected_namespaces=())
-
     debug: bool = False
-    title: str = "Aether"
+    title: str = "Aurelix Application"
     summary: str|None = None
     version: str = '0.1.0'
     docs_url: str = '/'
     redoc_url: str | None = None
     swagger_ui_oauth2_redirect_url: str = '/oauth2-redirect'
+    swagger_ui_init_oauth: InitOAuthSpec | None = None
     terms_of_service: str | None = None
     model_directory: str = 'models'
     libs_directory: str = 'libs'
     databases: list[DatabaseSpec] | None = None
-    oauth2_scheme: OAuth2Scheme | None = None
     oidc_discovery_endpoint: str | None = None
 
 class SearchResultLinks(pydantic.BaseModel):
@@ -144,9 +144,6 @@ class DeleteConfirmation(pydantic.BaseModel):
 
 class SimpleMessage(pydantic.BaseModel):
     detail: str | dict | None = None
-
-class Token(pydantic.BaseModel):
-    access_token: str 
 
 class User(pydantic.BaseModel):
     pass
@@ -173,7 +170,7 @@ class OIDCAddress(pydantic.BaseModel):
     postal_code: str | None = None
     country: str | None = None
 
-class OIDCUserInfoResponse(pydantic.BaseModel):
+class OIDCUserInfo(pydantic.BaseModel):
     sub: str
     name: str | None = None
     given_name: str | None = None

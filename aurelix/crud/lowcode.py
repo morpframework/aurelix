@@ -13,8 +13,9 @@ from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine
 from ..crud.routes import register_collection
-from ..dependencies import get_collection, Collection, Model
+from .dependencies import get_collection, Collection, Model
 from ..exc import AurelixException
+from ..settings import Settings
 from .. import schema
 from .. import exc
 from .. import state
@@ -80,9 +81,19 @@ async def load_app(path: str):
         spec: schema.AppSpec = schema.AppSpec.model_validate(yaml.safe_load(f))
 
     spec_dir = os.path.dirname(path)
+    init_oauth = {}
+    if spec.swagger_ui_init_oauth.client_id:
+        init_oauth['clientId'] = spec.swagger_ui_init_oauth.client_id
+    if spec.swagger_ui_init_oauth.client_secret:
+        init_oauth['clientSecret'] = spec.swagger_ui_init_oauth.client_secret
+    if init_oauth.keys() and spec.title:
+        init_oauth['appName'] = spec.title
+        
     app = fastapi.FastAPI(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
-                          docs_url=spec.docs_url, redoc_url=spec.redoc_url, swagger_ui_oauth2_redirect_url=spec.swagger_ui_oauth2_redirect_url,
-                          terms_of_service=spec.terms_of_service)
+                          docs_url=spec.docs_url, redoc_url=spec.redoc_url, 
+                          swagger_ui_oauth2_redirect_url=spec.swagger_ui_oauth2_redirect_url,
+                          terms_of_service=spec.terms_of_service,
+                          swagger_ui_init_oauth=init_oauth or None)
     state.APP_STATE.setdefault(app, {})
     state.APP_STATE[app]['settings'] = spec
 
@@ -109,11 +120,13 @@ async def load_app(path: str):
         if os.path.exists(md_path):
             load_app_models(app, md_path)
 
-    if spec.oidc_discovery_endpoint:
+    env_settings = Settings()
+    oidc_discovery_endpoint = spec.oidc_discovery_endpoint or env_settings.OIDC_DISCOVERY_ENDPOINT
+    if oidc_discovery_endpoint:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(spec.oidc_discovery_endpoint)
+            resp = await client.get(oidc_discovery_endpoint)
             if resp.status_code != 200:
-                raise exc.GatewayError("Unable to get discovery metadata")
+                raise exc.GatewayError("Unable to get OIDC discovery metadata")
             oidc_settings = schema.OIDCConfiguration.model_validate(resp.json())
             state.APP_STATE[app]['oidc_settings'] = oidc_settings
         
@@ -139,7 +152,7 @@ def load_app_models(app, directory_path):
         openapi_extra = {}
         if spec.tags:
             openapi_extra['tags'] = spec.tags
-            
+
         register_collection(app, res['collection'], 
             listing_enabled=spec.views.listing.enabled,
             create_enabled=spec.views.create.enabled,

@@ -4,12 +4,14 @@ import typing
 import math
 import enum
 from .. import schema
+from .base import BaseCollection
 from fastapi.responses import RedirectResponse
-from ..dependencies import Model
+from ..dependencies import UserInfo
+from .dependencies import Model
 from ..utils import snake_to_pascal, snake_to_human, item_json
 
 
-def register_collection(app, Collection, create_enabled=True, read_enabled=True, 
+def register_collection(app, Collection: type[BaseCollection], create_enabled=True, read_enabled=True, 
                         update_enabled=True, delete_enabled=True, listing_enabled=True, 
                         openapi_extra=None):
 
@@ -47,7 +49,7 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
 
     if listing_enabled:
         @Collection.view('/', method='GET', openapi_extra=openapi_extra, summary='List %s' % snake_to_human(collection_name))
-        async def listing(request: Request, query: str | None = None, 
+        async def listing(request: Request, userinfo: UserInfo, query: str | None = None, 
                           page: int = 0, page_size: int = 10, order_by: str | None = None) -> ModelSearchResult:
             col = Collection(request)
             if order_by:
@@ -78,27 +80,27 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
 
     if create_enabled:
         @Collection.view('/', method='POST', openapi_extra=openapi_extra, summary='Create new %s' % snake_to_human(collection_name))
-        async def create(request: Request, item: ModelInput) -> ModelResult:
+        async def create(request: Request, userinfo: UserInfo, item: ModelInput) -> ModelResult:
             col = Collection(request)
             item = await col.create(item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
 
     if read_enabled:
         @Collection.view('/{identifier}', method='GET', openapi_extra=openapi_extra, summary='Get %s' % snake_to_human(collection_name))
-        async def read(request: Request, col: Collection, model: Model, identifier: str) -> ModelResult:
+        async def read(request: Request, userinfo: UserInfo, col: Collection, model: Model, identifier: str) -> ModelResult:
             return ModelResult.model_validate({
                 'data': await item_json(col, model)
             })
 
     if update_enabled:
         @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
-        async def update(request: Request, identifier: str, col:Collection, model: Model, item: ModelInput) -> ModelResult:
+        async def update(request: Request, userinfo: UserInfo, identifier: str, col:Collection, model: Model, item: ModelInput) -> ModelResult:
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
     
     if delete_enabled:
         @Collection.view('/{identifier}', method='DELETE', openapi_extra=openapi_extra, summary='Delete %s' % snake_to_human(collection_name))
-        async def delete(request: Request, identifier: str, col: Collection, model: Model, confirmation: schema.DeleteConfirmation) -> schema.SimpleMessage:
+        async def delete(request: Request, userinfo: UserInfo, identifier: str, col: Collection, model: Model, confirmation: schema.DeleteConfirmation) -> schema.SimpleMessage:
             if confirmation.delete:
                 result = await col.delete(identifier)
                 return {
@@ -113,7 +115,7 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
             data=(dict[str, typing.Any] | None, None)
         )
         @Collection.view('/{identifier}/+transition', method='POST', openapi_extra=openapi_extra, summary='Trigger state update for %s' % snake_to_human(collection_name))
-        async def transition(request: Request, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> schema.SimpleMessage:
+        async def transition(request: Request, userinfo: UserInfo, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> schema.SimpleMessage:
             await col.trigger(model, transition.trigger, data=transition.data)
             await col.update(identifier, model)
             return {

@@ -17,6 +17,7 @@ def main(argv=None):
     if not args.config:
         print('AURELIX_CONFIG environment is not set, and no config specified', file=sys.stderr)
         sys.exit(1)
+    os.environ['AURELIX_CONFIG'] = args.config
     app = asyncio.run(load_app(args.config))
     db_upgrade(app)
     uvicorn.run(app, host=args.host, port=args.port)
