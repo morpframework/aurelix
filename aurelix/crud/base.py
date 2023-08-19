@@ -179,17 +179,3 @@ class BaseCollection(dectate.App):
     def model_validate(self, obj):
         return self.Schema.model_validate(obj)
 
-def get_schema(request: fastapi.Request, name: str) -> type[pydantic.BaseModel]:
-    return get_collection(request, name).Schema
-
-def get_collection(request: fastapi.Request, name: str = None) -> BaseCollection:
-    if name is None:
-        comps = request.url.path.split('/')
-        if len(comps) < 2:
-            raise exc.CollectionNotFoundException(request.url.path)
-        name = comps[1]
-    if not name in request.app.collection:
-        raise exc.CollectionNotFoundException(request.url.path)
-    return request.app.collection[name](request)
-
-Collection = typing.Annotated[BaseCollection, fastapi.Depends(get_collection)]

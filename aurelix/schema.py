@@ -105,6 +105,9 @@ class DatabaseSpec(pydantic.BaseModel):
     name: str
     url: str 
 
+class OAuth2Scheme(enum.StrEnum):
+    PASSWORD = 'password'
+
 class AppSpec(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(protected_namespaces=())
 
@@ -119,6 +122,8 @@ class AppSpec(pydantic.BaseModel):
     model_directory: str = 'models'
     libs_directory: str = 'libs'
     databases: list[DatabaseSpec] | None = None
+    oauth2_scheme: OAuth2Scheme | None = None
+    oidc_discovery_endpoint: str | None = None
 
 class SearchResultLinks(pydantic.BaseModel):
     next: str | None = None
@@ -140,3 +145,53 @@ class DeleteConfirmation(pydantic.BaseModel):
 class SimpleMessage(pydantic.BaseModel):
     detail: str | dict | None = None
 
+class Token(pydantic.BaseModel):
+    access_token: str 
+
+class User(pydantic.BaseModel):
+    pass
+
+class OIDCConfiguration(pydantic.BaseModel):
+    issuer: str
+    authorization_endpoint: str
+    token_endpoint: str
+    userinfo_endpoint: str
+    jwks_uri: str
+    response_types_supported: list[str]
+    subject_types_supported: list[str]
+    id_token_signing_alg_values_supported: list[str]
+    scopes_supported: list[str]
+    token_endpoint_auth_methods_supported: list[str]
+    claims_supported: list[str]
+
+
+class OIDCAddress(pydantic.BaseModel):
+    formatted: str | None = None
+    street_address: str | None = None
+    locality: str | None = None
+    region: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+
+class OIDCUserInfoResponse(pydantic.BaseModel):
+    sub: str
+    name: str | None = None
+    given_name: str | None = None
+    family_name: str | None = None
+    middle_name: str | None = None
+    nickname: str | None = None
+    preferred_username: str | None = None
+    profile: str | None = None
+    picture: str | None = None
+    website: str | None = None
+    email: str 
+    email_verified: bool | None = None
+    gender: str | None = None
+    birthdate: str | None = None
+    zoneinfo: str | None = None
+    locale: str | None = None
+    phone_number: str | None = None
+    phone_number_verified: bool | None = None
+    address: OIDCAddress | None = None
+    updated_at: int | None = None
+    groups: list[str] | None = None

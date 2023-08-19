@@ -31,6 +31,7 @@ setup(name='aurelix',
           'pydantic-settings',
           'transitions',
           'python-multipart',
+          'aiohttp',
       ],
       entry_points={
           'console_scripts': [

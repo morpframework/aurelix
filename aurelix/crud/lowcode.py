@@ -1,5 +1,7 @@
 import fastapi
+import httpx
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordBearer, SecurityScopes, OAuth2AuthorizationCodeBearer
 import inspect
 import os
 import sys
@@ -11,10 +13,11 @@ from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine
 from ..crud.routes import register_collection
+from ..dependencies import get_collection, Collection, Model
 from ..exc import AurelixException
 from .. import schema
 from .. import exc
-from .base import Collection, get_collection
+from .. import state
 from typing import Any
 import sqlite3
 import enum
@@ -38,13 +41,6 @@ SA_TYPES={
     'boolean': sa.Boolean
 }
 
-APP_STATE = {
-    'app': None,
-    'engines': {},
-    'databases': {}
-}
-
-
 def create_table(name, metadata, columns=None, indexes=None, constraints=None, *args):
     columns = columns or []
     indexes = indexes or []
@@ -66,18 +62,6 @@ def create_table(name, metadata, columns=None, indexes=None, constraints=None, *
         *args
     )
 
-async def get_model(request: fastapi.Request, collection: Collection):
-    if not 'identifier' in request.path_params:
-        raise exc.AurelixException(r'{identifier} parameter is required on this route to resolve model')
-    identifier = request.path_params['identifier']
-    if identifier.startswith('+'):
-        raise exc.RecordNotFoundException(identifier)
-    obj = await collection.get(identifier)
-    if not obj:
-        raise exc.RecordNotFoundException(identifier)
-    return obj
-
-Model = typing.Annotated[schema.CoreModel, fastapi.Depends(get_model)]
 
 class Registry(dict):
 
@@ -90,7 +74,7 @@ class Registry(dict):
     def __delattr__(self, __name: str) -> None:
         del self[__name]
     
-def load_app(path: str):
+async def load_app(path: str):
 
     with open(path) as f:
         spec: schema.AppSpec = schema.AppSpec.model_validate(yaml.safe_load(f))
@@ -99,8 +83,8 @@ def load_app(path: str):
     app = fastapi.FastAPI(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
                           docs_url=spec.docs_url, redoc_url=spec.redoc_url, swagger_ui_oauth2_redirect_url=spec.swagger_ui_oauth2_redirect_url,
                           terms_of_service=spec.terms_of_service)
-    APP_STATE['app'] = app
-    APP_STATE['settings'] = spec
+    state.APP_STATE.setdefault(app, {})
+    state.APP_STATE[app]['settings'] = spec
 
     if spec.libs_directory:
         ld_path = os.path.join(spec_dir, spec.libs_directory)
@@ -113,7 +97,8 @@ def load_app(path: str):
             d.url, connect_args={"check_same_thread": False}
         )
         db = databases.Database(d.url)
-        APP_STATE['databases'][d.name] = {
+        state.APP_STATE[app].setdefault('databases', {})
+        state.APP_STATE[app]['databases'][d.name] = {
             'metadata': metadata,
             'engine': engine,
             'db': db
@@ -123,12 +108,21 @@ def load_app(path: str):
         md_path = os.path.join(spec_dir, spec.model_directory)
         if os.path.exists(md_path):
             load_app_models(app, md_path)
+
+    if spec.oidc_discovery_endpoint:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(spec.oidc_discovery_endpoint)
+            if resp.status_code != 200:
+                raise exc.GatewayError("Unable to get discovery metadata")
+            oidc_settings = schema.OIDCConfiguration.model_validate(resp.json())
+            state.APP_STATE[app]['oidc_settings'] = oidc_settings
+        
     register_exception_views(app)
 
     return app
 
 def db_upgrade(app: fastapi.FastAPI):
-    for m in APP_STATE['databases'].values():
+    for m in state.APP_STATE[app]['databases'].values():
         metadata = m['metadata']
         engine = m['engine']
         metadata.create_all(engine)
@@ -137,7 +131,7 @@ def db_upgrade(app: fastapi.FastAPI):
 def load_app_models(app, directory_path):
     app.collection = Registry()
     for fn in glob.glob('*.yaml', root_dir=directory_path):
-        res = load_model_spec(os.path.join(directory_path, fn))
+        res = load_model_spec(app, os.path.join(directory_path, fn))
         spec = res['spec']
         app.collection[snake_to_pascal(res['spec'].name)] = res['collection']
         app.collection[res['spec'].name] = res['collection']
@@ -145,6 +139,7 @@ def load_app_models(app, directory_path):
         openapi_extra = {}
         if spec.tags:
             openapi_extra['tags'] = spec.tags
+            
         register_collection(app, res['collection'], 
             listing_enabled=spec.views.listing.enabled,
             create_enabled=spec.views.create.enabled,
@@ -154,7 +149,7 @@ def load_app_models(app, directory_path):
             openapi_extra=openapi_extra
         )
 
-def load_model_spec(path: str):
+def load_model_spec(app: fastapi.FastAPI, path: str):
 
     with open(path) as f:
         spec: schema.ModelSpec = schema.ModelSpec.model_validate(yaml.safe_load(f))
@@ -164,9 +159,10 @@ def load_model_spec(path: str):
     Schema = generate_pydantic_model(spec,name=snake_to_pascal(spec.name))
     result['schema'] = Schema
     if model_type == 'sqlalchemy':
-        table = generate_sqlalchemy_table(spec)
+        table = generate_sqlalchemy_table(app, spec)
         result['table'] = table
         Collection = generate_sqlalchemy_collection(
+            app,
             spec, Schema, table, 
             name=snake_to_pascal(spec.name))
         result['collection'] = Collection
@@ -230,11 +226,13 @@ def load_code_ref(spec: schema.CodeRefSpec, package=None):
 
 
 @validate_types
-def generate_sqlalchemy_collection(spec: schema.ModelSpec, 
+def generate_sqlalchemy_collection(app: fastapi.FastAPI,
+                                   spec: schema.ModelSpec, 
                                    schema: type[pydantic.BaseModel], 
                                    table: sa.Table,
                                    name: str='Collection'):
-    database = APP_STATE['databases'][spec.storageType.database]['db']
+
+    database = state.APP_STATE[app]['databases'][spec.storageType.database]['db']
     def constructor(self, request):
         SQLACollection.__init__(self, request, database=database, table=table)
 
@@ -280,8 +278,8 @@ def generate_pydantic_model(spec: schema.ModelSpec, name: str = 'Schema'):
     )
 
 @validate_types
-def generate_sqlalchemy_table(spec: schema.ModelSpec) -> sa.Table:
-    metadata = APP_STATE['databases'][spec.storageType.database]['metadata']
+def generate_sqlalchemy_table(app, spec: schema.ModelSpec) -> sa.Table:
+    metadata = state.APP_STATE[app]['databases'][spec.storageType.database]['metadata']
     columns = []
     constraints = []
     for field_name, field_spec in spec.fields.items():
@@ -343,5 +341,4 @@ def register_exception_views(app):
             status_code=422,
             content={"detail": exc.value},
         )
-    
     

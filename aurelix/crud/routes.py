@@ -5,7 +5,7 @@ import math
 import enum
 from .. import schema
 from fastapi.responses import RedirectResponse
-
+from ..dependencies import Model
 from ..utils import snake_to_pascal, snake_to_human, item_json
 
 
@@ -13,7 +13,6 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
                         update_enabled=True, delete_enabled=True, listing_enabled=True, 
                         openapi_extra=None):
 
-    from .lowcode import Model
     openapi_extra = openapi_extra or {}
     collection_name = Collection.name
     Schema = Collection.Schema
