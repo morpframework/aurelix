@@ -6,7 +6,7 @@ import json
 
 class APIClient(object):
 
-    def __init__(self, base_url: str, client_id: str, client_secret: str):
+    def __init__(self, base_url: str, client_id: str | None = None, client_secret: str | None = None):
         if base_url.endswith('/'):
             self.base_url = base_url[:-1]
         else:
@@ -256,7 +256,7 @@ class Collection(object):
 
 class Client(object):
 
-    def __init__(self, base_url: str, client_id: str, client_secret: str) -> None:
+    def __init__(self, base_url: str, client_id: str|None = None, client_secret: str|None = None) -> None:
         self.api: APIClient = APIClient(base_url, client_id, client_secret)
 
     def authenticate(self, username: str, password: str):
