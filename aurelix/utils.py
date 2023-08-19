@@ -20,5 +20,6 @@ async def item_json(col, item):
         'id': item.id,
         'attributes': await col.transform_output_data(item),
         'links': {
-            'self': col.url(item)
+            'self': col.url(item),
+            'collection': col.url()
         }}

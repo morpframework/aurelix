@@ -3,7 +3,7 @@ import sys
 import uvicorn
 import os
 import asyncio
-from . import load_app, db_upgrade
+from .api import load_app, db_upgrade
 
 def main(argv=None):
     argv = argv or sys.argv[1:]

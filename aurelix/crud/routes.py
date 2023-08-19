@@ -13,7 +13,7 @@ from ..utils import snake_to_pascal, snake_to_human, item_json
 
 def register_collection(app, Collection: type[BaseCollection], create_enabled=True, read_enabled=True, 
                         update_enabled=True, delete_enabled=True, listing_enabled=True, 
-                        openapi_extra=None):
+                        openapi_extra=None, max_page_size=100):
 
     openapi_extra = openapi_extra or {}
     collection_name = Collection.name
@@ -51,6 +51,10 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         @Collection.view('/', method='GET', openapi_extra=openapi_extra, summary='List %s' % snake_to_human(collection_name))
         async def listing(request: Request, userinfo: UserInfo, query: str | None = None, 
                           page: int = 0, page_size: int = 10, order_by: str | None = None) -> ModelSearchResult:
+            if page_size > max_page_size:
+                page_size = 100
+            if page_size < 0:
+                page_size = 0
             col = Collection(request)
             if order_by:
                 order_by = [o.split(':') for o in order_by.strip().replace(',',' ').split(' ')]
@@ -64,13 +68,15 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
                 prev = None
             else:
                 prev = endpoint_url + '?page=%s&page_size=%s' % (page - 1, page_size)
-
+            self_url = endpoint_url + '?page=%s&page_size=%s' % (page, page_size)
             total_pages = int(math.ceil(float(total) / page_size))
             return {
                 'data': [await item_json(col, i) for i in items],
                 'links': {
                     'next': next,
-                    'prev': prev
+                    'prev': prev,
+                    'current': self_url,
+                    'collection': endpoint_url
                 },
                 'meta': {
                     'total_records': total,

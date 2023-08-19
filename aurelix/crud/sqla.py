@@ -57,6 +57,10 @@ class SQLACollection(BaseCollection):
     async def get(self, identifier: str):
         if hasattr(self.table.c, 'name'):
             return await self._get_by_field('name', identifier)
+        try:
+            identifier = int(identifier)
+        except ValueError:
+            return None
         return await self.get_by_id(int(identifier))
 
     @validate_types

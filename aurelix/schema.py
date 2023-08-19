@@ -99,6 +99,7 @@ class ModelSpec(pydantic.BaseModel):
     transformCreateData: CodeRefSpec | None = None 
     transformUpdateData: CodeRefSpec | None = None 
     transformOutputData: CodeRefSpec | None = None
+    maxPageSize: int = 100
 
 class DatabaseSpec(pydantic.BaseModel):
 
@@ -128,6 +129,8 @@ class AppSpec(pydantic.BaseModel):
 class SearchResultLinks(pydantic.BaseModel):
     next: str | None = None
     prev: str | None = None
+    current: str | None = None
+    collection: str | None = None
 
 class SearchResultMeta(pydantic.BaseModel):
     total_records: int | None = None
@@ -138,6 +141,7 @@ class SearchResult(pydantic.BaseModel):
 
 class ModelResultLinks(pydantic.BaseModel):
     self: str | None = None
+    collection: str | None = None
 
 class DeleteConfirmation(pydantic.BaseModel):
     delete: bool = False
@@ -193,12 +197,34 @@ class OIDCUserInfo(pydantic.BaseModel):
     updated_at: int | None = None
     groups: list[str] | None = None
 
+class WellKnownStateMachineTrigger(pydantic.BaseModel):
+    name: str
+    label: str
+    source: str | list[str]
+
+class WellKnownStateMachineStates(pydantic.BaseModel):
+    name: str
+    label: str
+
+class WellKnownStateMachine(pydantic.BaseModel):
+    triggers: list[WellKnownStateMachineTrigger]
+    states: list[WellKnownStateMachineStates]
+    field: str
+
 class WellKnownCollection(pydantic.BaseModel):
     name: str
-    jsonschema: dict = pydantic.Field(alias='schema')
+    jsonSchema: dict = pydantic.Field(alias='schema')
+    stateMachine: WellKnownStateMachine | None = None
     links: dict[str, str]
 
 class WellKnownConfiguration(pydantic.BaseModel):
 
     collections: dict[str, WellKnownCollection]
     openid_configuration: OIDCConfiguration | None = pydantic.Field(default=None, alias='openid-configuration')
+
+class OIDCTokenResponse(pydantic.BaseModel):
+    access_token: str | None = None
+    token_type: str | None = None
+    expires_in: int | None = None
+    refresh_token: str | None = None
+    id_token: str | None = None

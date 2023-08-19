@@ -162,7 +162,8 @@ def load_app_models(app, directory_path):
             read_enabled=spec.views.read.enabled,
             update_enabled=spec.views.update.enabled,
             delete_enabled=spec.views.delete.enabled,
-            openapi_extra=openapi_extra
+            openapi_extra=openapi_extra,
+            max_page_size=spec.maxPageSize,
         )
 
 def load_model_spec(app: fastapi.FastAPI, path: str):
@@ -375,6 +376,12 @@ def register_views(app: fastapi.FastAPI):
                     'self': col.url()
                 }
             }
+            if spec.stateMachine:
+                info['stateMachine'] = {
+                    'triggers': [{'name': t.trigger, 'label': t.label, 'source': t.source} for t in spec.stateMachine.transitions], 
+                    'states': [{'name': s.value, 'label': s.label} for s in spec.stateMachine.states],
+                    'field': spec.stateMachine.field
+                }
             cols[name] = info
         return {
             'collections': cols,
