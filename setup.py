@@ -30,6 +30,7 @@ setup(name='aurelix',
           'aiomysql',
           'pydantic-settings',
           'transitions',
+          'python-multipart',
       ],
       entry_points={
           'console_scripts': [

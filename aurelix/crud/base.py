@@ -49,7 +49,7 @@ class ViewAction(dectate.Action):
                 'function': obj
         }
 
-class Collection(dectate.App):
+class BaseCollection(dectate.App):
     name: str
     Schema: type[pydantic.BaseModel]
     StateMachine: type[StateMachine]
@@ -179,19 +179,17 @@ class Collection(dectate.App):
     def model_validate(self, obj):
         return self.Schema.model_validate(obj)
 
-def get_collection(request:fastapi.Request, name: str) -> Collection: 
+def get_schema(request: fastapi.Request, name: str) -> type[pydantic.BaseModel]:
+    return get_collection(request, name).Schema
+
+def get_collection(request: fastapi.Request, name: str = None) -> BaseCollection:
+    if name is None:
+        comps = request.url.path.split('/')
+        if len(comps) < 2:
+            raise exc.CollectionNotFoundException(request.url.path)
+        name = comps[1]
+    if not name in request.app.collection:
+        raise exc.CollectionNotFoundException(request.url.path)
     return request.app.collection[name](request)
 
-def get_schema(request: fastapi.Request, name: str) -> type[pydantic.BaseModel]:
-    return request.app.collection[name].Schema
-
-def get_collection_from_request(request: fastapi.Request):
-    comps = request.url.path.split('/')
-    if len(comps) < 2:
-        raise exc.CollectionNotFoundException(request.url.path)
-    collection_name = comps[1]
-    if not collection_name in request.app.collection:
-        raise exc.CollectionNotFoundException(request.url.path)
-    return request.app.collection[collection_name](request)
-
-Collection = typing.Annotated[Collection, fastapi.Depends(get_collection_from_request)]
+Collection = typing.Annotated[BaseCollection, fastapi.Depends(get_collection)]

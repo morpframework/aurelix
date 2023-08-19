@@ -12,8 +12,9 @@ from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine
 from ..crud.routes import register_collection
 from ..exc import AurelixException
+from .. import schema
 from .. import exc
-from .base import Collection, get_collection_from_request
+from .base import Collection, get_collection
 from typing import Any
 import sqlite3
 import enum
@@ -65,14 +66,6 @@ def create_table(name, metadata, columns=None, indexes=None, constraints=None, *
         *args
     )
 
-
-class CoreModel(pydantic.BaseModel):
-    id: int | None = None
-    dateCreated: datetime.datetime | None = None
-    dateModified: datetime.datetime | None = None
-    creator: str | None = None
-    editor: str | None = None
-
 async def get_model(request: fastapi.Request, collection: Collection):
     if not 'identifier' in request.path_params:
         raise exc.AurelixException(r'{identifier} parameter is required on this route to resolve model')
@@ -84,117 +77,7 @@ async def get_model(request: fastapi.Request, collection: Collection):
         raise exc.RecordNotFoundException(identifier)
     return obj
 
-Model = typing.Annotated[CoreModel, fastapi.Depends(get_model)]
-
-class StorageTypeSpec(pydantic.BaseModel):
-    name: str
-    database: str
-
-class EnumSpec(pydantic.BaseModel):
-    value: str
-    label: str
-
-class FieldTypeSpec(pydantic.BaseModel):
-    type: str
-    size: int | None = None
-    enum: list[EnumSpec] | None = None
-    sa_options: dict[str, object] | None = None
-
-class FieldSpec(pydantic.BaseModel):
-    title: str
-    dataType: FieldTypeSpec
-    required: bool = False
-    default: Any = None
-    indexed: bool = False
-    unique: bool = False
-    foreignKey: str | None = None
-
-class ViewSpec(pydantic.BaseModel):
-    enabled: bool = True
-
-class RequestMethod(enum.StrEnum):
-    POST = 'POST'
-    GET = 'GET'
-    PUT = 'PUT'
-    PATCH = 'PATCH'
-    DELETE = 'DELETE'
-    OPTIONS = 'OPTIONS'
-
-class CodeRefSpec(pydantic.BaseModel):
-    function: str | None = None
-    code: str | None = None
-
-class ExtensionViewSpec(pydantic.BaseModel):
-    method: RequestMethod
-    summary: str | None = None
-    tags: list[str] | None = None
-    openapi_extra: dict[str, typing.Any] | None = None
-    handler: CodeRefSpec
-
-class ViewsSpec(pydantic.BaseModel):
-
-    listing: ViewSpec = pydantic.Field(default_factory=ViewSpec)
-    create: ViewSpec = pydantic.Field(default_factory=ViewSpec)
-    read: ViewSpec = pydantic.Field(default_factory=ViewSpec)
-    update: ViewSpec = pydantic.Field(default_factory=ViewSpec)
-    delete: ViewSpec = pydantic.Field(default_factory=ViewSpec)
-    extensions: dict[str, ExtensionViewSpec] | None = None
-
-class StateMachineStateSpec(pydantic.BaseModel):
-    value: str
-    label: str
-
-class StateMachineTransitionSpec(pydantic.BaseModel):
-    trigger: str 
-    label: str 
-    source: str | list[str]
-    dest: str
-    onEnter: CodeRefSpec | None = None
-    onExit: CodeRefSpec | None = None
-
-class StateMachineSpec(pydantic.BaseModel):
-    initialState: str
-    field: str = 'workflowStatus'
-    states: list[StateMachineStateSpec] 
-    transitions: list[StateMachineTransitionSpec]
-
-class ModelSpec(pydantic.BaseModel):
-
-    name: str
-    storageType: StorageTypeSpec
-    fields: dict[str, FieldSpec]
-    views: ViewsSpec = pydantic.Field(default_factory=ViewsSpec)
-    tags: list[str]
-    stateMachine: StateMachineSpec | None = None 
-    beforeCreate: CodeRefSpec | None = None
-    afterCreate: CodeRefSpec | None = None
-    beforeUpdate: CodeRefSpec | None = None
-    afterUpdate: CodeRefSpec | None = None 
-    beforeDelete: CodeRefSpec | None = None
-    afterDelete: CodeRefSpec | None = None
-    transformCreateData: CodeRefSpec | None = None 
-    transformUpdateData: CodeRefSpec | None = None 
-    transformOutputData: CodeRefSpec | None = None
-
-class DatabaseSpec(pydantic.BaseModel):
-
-    name: str
-    url: str 
-
-class AppSpec(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(protected_namespaces=())
-
-    debug: bool = False
-    title: str = "Aether"
-    summary: str|None = None
-    version: str = '0.1.0'
-    docs_url: str = '/'
-    redoc_url: str | None = None
-    swagger_ui_oauth2_redirect_url: str = '/oauth2-redirect'
-    terms_of_service: str | None = None
-    model_directory: str = 'models'
-    libs_directory: str = 'libs'
-    databases: list[DatabaseSpec] | None = None
+Model = typing.Annotated[schema.CoreModel, fastapi.Depends(get_model)]
 
 class Registry(dict):
 
@@ -210,7 +93,7 @@ class Registry(dict):
 def load_app(path: str):
 
     with open(path) as f:
-        spec: AppSpec = AppSpec.model_validate(yaml.safe_load(f))
+        spec: schema.AppSpec = schema.AppSpec.model_validate(yaml.safe_load(f))
 
     spec_dir = os.path.dirname(path)
     app = fastapi.FastAPI(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
@@ -274,7 +157,7 @@ def load_app_models(app, directory_path):
 def load_model_spec(path: str):
 
     with open(path) as f:
-        spec = ModelSpec.model_validate(yaml.safe_load(f))
+        spec: schema.ModelSpec = schema.ModelSpec.model_validate(yaml.safe_load(f))
 
     result = {'spec': spec}
     model_type = spec.storageType.name
@@ -306,7 +189,7 @@ def load_model_spec(path: str):
                     Collection.view(vpath, **view_opts)(impl)
     return result
     
-def generate_statemachine(spec: ModelSpec, name: str = 'StateMachine'):
+def generate_statemachine(spec: schema.ModelSpec, name: str = 'StateMachine'):
     state_field = spec.stateMachine.field
     states = [s.value for s in spec.stateMachine.states]
     trans = [{'trigger': t.trigger, 
@@ -327,7 +210,7 @@ def generate_statemachine(spec: ModelSpec, name: str = 'StateMachine'):
                     attrs[m + '_' + s.value] = impl
     return type(name, (StateMachine, ), attrs)
 
-def load_code_ref(spec: CodeRefSpec, package=None):
+def load_code_ref(spec: schema.CodeRefSpec, package=None):
     if spec.function and spec.code:
         raise AssertionError("Specify 'function' or 'code', but not both")
     if spec.function:
@@ -335,14 +218,19 @@ def load_code_ref(spec: CodeRefSpec, package=None):
         module = importlib.import_module(mod, package)
         return getattr(module, fn)
     if spec.code:
-        namespace = {'Request': fastapi.Request}
+        # FIXME: make this configurable through dectate or something
+        namespace = {'fastapi': fastapi,
+                     'Request': fastapi.Request, 
+                     'Collection': Collection, 
+                     'get_collection': get_collection, 
+                     'Model': Model}
         exec(spec.code, namespace)
         return namespace['function']
     return None
 
 
 @validate_types
-def generate_sqlalchemy_collection(spec: ModelSpec, 
+def generate_sqlalchemy_collection(spec: schema.ModelSpec, 
                                    schema: type[pydantic.BaseModel], 
                                    table: sa.Table,
                                    name: str='Collection'):
@@ -365,10 +253,10 @@ def generate_sqlalchemy_collection(spec: ModelSpec,
             impl = load_code_ref(coderef)
             if impl:
                 attrs[m] = impl
-    return typing.Annotated[type(name, (SQLACollection, ), attrs), fastapi.Depends(get_collection_from_request)]
+    return typing.Annotated[type(name, (SQLACollection, ), attrs), fastapi.Depends(get_collection)]
 
 @validate_types
-def generate_pydantic_model(spec: ModelSpec, name: str = 'Schema'):
+def generate_pydantic_model(spec: schema.ModelSpec, name: str = 'Schema'):
     fields = {}
     stateMachine = spec.stateMachine
     for field_name, field_spec in spec.fields.items():
@@ -392,7 +280,7 @@ def generate_pydantic_model(spec: ModelSpec, name: str = 'Schema'):
     )
 
 @validate_types
-def generate_sqlalchemy_table(spec: ModelSpec) -> sa.Table:
+def generate_sqlalchemy_table(spec: schema.ModelSpec) -> sa.Table:
     metadata = APP_STATE['databases'][spec.storageType.database]['metadata']
     columns = []
     constraints = []
@@ -414,7 +302,7 @@ def generate_sqlalchemy_table(spec: ModelSpec) -> sa.Table:
         constraints=constraints
     )
 
-def get_sa_column(field_name: str, field_spec: FieldSpec):
+def get_sa_column(field_name: str, field_spec: schema.FieldSpec):
     type_class = SA_TYPES[field_spec.dataType.type]
     type_args = []
     if field_spec.dataType.size:

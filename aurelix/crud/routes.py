@@ -3,29 +3,10 @@ import pydantic
 import typing
 import math
 import enum
+from .. import schema
 from fastapi.responses import RedirectResponse
 
 from ..utils import snake_to_pascal, snake_to_human, item_json
-
-class SearchResultLinks(pydantic.BaseModel):
-    next: str | None = None
-    prev: str | None = None
-
-class SearchResultMeta(pydantic.BaseModel):
-    total_records: int | None = None
-    total_pages: int | None = None
-
-class SearchResult(pydantic.BaseModel):
-    data: list[pydantic.BaseModel]
-
-class ModelResultLinks(pydantic.BaseModel):
-    self: str | None = None
-
-class DeleteConfirmation(pydantic.BaseModel):
-    delete: bool = False
-
-class SimpleMessage(pydantic.BaseModel):
-    detail: str | dict | None = None
 
 
 def register_collection(app, Collection, create_enabled=True, read_enabled=True, 
@@ -44,14 +25,14 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
         type = (str, None),
         id = (int, None),
         attributes = (Schema, None),
-        links = (typing.Optional[ModelResultLinks], None)
+        links = (typing.Optional[schema.ModelResultLinks], None)
     )
 
     ModelSearchResult = pydantic.create_model(
         snake_to_pascal(collection_name) + 'ModelSearchResult', 
         data = (typing.List[ModelData], None),
-        links = (typing.Optional[SearchResultLinks], None),
-        meta = (typing.Optional[SearchResultMeta], None)
+        links = (typing.Optional[schema.SearchResultLinks], None),
+        meta = (typing.Optional[schema.SearchResultMeta], None)
     )
 
     ModelResult = pydantic.create_model(
@@ -118,7 +99,7 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
     
     if delete_enabled:
         @Collection.view('/{identifier}', method='DELETE', openapi_extra=openapi_extra, summary='Delete %s' % snake_to_human(collection_name))
-        async def delete(request: Request, identifier: str, col: Collection, model: Model, confirmation: DeleteConfirmation) -> SimpleMessage:
+        async def delete(request: Request, identifier: str, col: Collection, model: Model, confirmation: schema.DeleteConfirmation) -> schema.SimpleMessage:
             if confirmation.delete:
                 result = await col.delete(identifier)
                 return {
@@ -133,7 +114,7 @@ def register_collection(app, Collection, create_enabled=True, read_enabled=True,
             data=(dict[str, typing.Any] | None, None)
         )
         @Collection.view('/{identifier}/+transition', method='POST', openapi_extra=openapi_extra, summary='Trigger state update for %s' % snake_to_human(collection_name))
-        async def transition(request: Request, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> SimpleMessage:
+        async def transition(request: Request, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> schema.SimpleMessage:
             await col.trigger(model, transition.trigger, data=transition.data)
             await col.update(identifier, model)
             return {
