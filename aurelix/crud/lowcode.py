@@ -88,7 +88,7 @@ async def load_app(path: str):
         init_oauth['clientSecret'] = spec.swagger_ui_init_oauth.client_secret
     if init_oauth.keys() and spec.title:
         init_oauth['appName'] = spec.title
-        
+
     app = fastapi.FastAPI(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
                           docs_url=spec.docs_url, redoc_url=spec.redoc_url, 
                           swagger_ui_oauth2_redirect_url=spec.swagger_ui_oauth2_redirect_url,
@@ -130,7 +130,7 @@ async def load_app(path: str):
             oidc_settings = schema.OIDCConfiguration.model_validate(resp.json())
             state.APP_STATE[app]['oidc_settings'] = oidc_settings
         
-    register_exception_views(app)
+    register_views(app)
 
     return app
 
@@ -152,6 +152,9 @@ def load_app_models(app, directory_path):
         openapi_extra = {}
         if spec.tags:
             openapi_extra['tags'] = spec.tags
+
+        state.APP_STATE[app].setdefault('models', {})
+        state.APP_STATE[app]['models'][spec.name] = spec
 
         register_collection(app, res['collection'], 
             listing_enabled=spec.views.listing.enabled,
@@ -333,7 +336,7 @@ def get_sa_column(field_name: str, field_spec: schema.FieldSpec):
     return sa.Column(*args, **kwargs)
 
 
-def register_exception_views(app):
+def register_views(app: fastapi.FastAPI):
     @app.exception_handler(AurelixException)
     async def search_exception_handler(request: fastapi.Request, exc: AurelixException):
         return JSONResponse(
@@ -355,3 +358,25 @@ def register_exception_views(app):
             content={"detail": exc.value},
         )
     
+
+    @app.get('/.well-known/aurelix-configuration', include_in_schema=False)
+    async def aurelix_configuration(request: fastapi.Request) -> schema.WellKnownConfiguration:
+        app = request.app
+        settings = state.APP_STATE[app]['settings']
+        models = state.APP_STATE[app]['models']
+        oidc_settings = state.APP_STATE[app]['oidc_settings']
+        cols = {}
+        for name, spec in models.items():
+            col = await get_collection(request, name)
+            info = {
+                'name': name,
+                'schema': col.Schema.model_json_schema(),
+                'links': {
+                    'self': col.url()
+                }
+            }
+            cols[name] = info
+        return {
+            'collections': cols,
+            'openid-configuration': oidc_settings.model_dump()
+        }

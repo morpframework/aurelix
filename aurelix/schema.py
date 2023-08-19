@@ -192,3 +192,13 @@ class OIDCUserInfo(pydantic.BaseModel):
     address: OIDCAddress | None = None
     updated_at: int | None = None
     groups: list[str] | None = None
+
+class WellKnownCollection(pydantic.BaseModel):
+    name: str
+    jsonschema: dict = pydantic.Field(alias='schema')
+    links: dict[str, str]
+
+class WellKnownConfiguration(pydantic.BaseModel):
+
+    collections: dict[str, WellKnownCollection]
+    openid_configuration: OIDCConfiguration | None = pydantic.Field(default=None, alias='openid-configuration')
