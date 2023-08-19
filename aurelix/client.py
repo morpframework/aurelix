@@ -45,6 +45,8 @@ class APIClient(object):
                      grant_type: str='password', scope: list[str]=None):
         scope = scope or self._scope or ['openid','email', 'profile']
         self._scope = scope
+        if not self.client_id:
+            return None
         token_endpoint = self.openid_configuration.token_endpoint
         payload = {
             'grant_type': grant_type,
