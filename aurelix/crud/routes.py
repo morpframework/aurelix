@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Request, HTTPException, Body
+from fastapi.exceptions import ValidationException
 import json
 import pydantic
 import typing
 import math
 import enum
 from .. import schema
+from .. import exc
 from .base import BaseCollection
 from fastapi.responses import RedirectResponse
 from ..dependencies import UserInfo
@@ -111,11 +113,15 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         @Collection.view('/{identifier}', method='PATCH', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
         async def update_patch(request: Request, userinfo: UserInfo, identifier: str, col:Collection, 
                                patch: typing.Annotated[dict[str, typing.Any | None], Body(example=patch_example)]) -> ModelResult:
-            ModelPatchInput.model_validate(patch)
+            try:
+                ModelPatchInput.model_validate(patch)
+            except pydantic.ValidationError as e:
+                raise exc.ValidationError(e.errors())
             src_item = await col.get(identifier)
             item = ModelPatchInput.model_validate(src_item.model_dump())
             for k, v in patch.items():
-                setattr(item, k, v)
+                if hasattr(item, k):
+                    setattr(item, k, v)
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
         
