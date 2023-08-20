@@ -84,15 +84,16 @@ class SQLACollection(BaseCollection):
         if not self.permissionFilters:
             return []
         
-        filters = []
         identities = await get_permission_identities(self.request)
         for f in self.permissionFilters:
             if '*' in f.identities:
-                filters.append(sa.text(f.whereFilter))
+                return [sa.text(f.whereFilter)]
             for i in identities:
                 if i in f.identities:
-                    filters.append(sa.text(f.whereFilter))
-        return filters
+                    return [sa.text(f.whereFilter)]
+        
+        # reject everything by default
+        return [sa.text('1=0')]
     
     @validate_types
     async def search(self, query: str | None, offset: int = 0, limit: int | None = None, 

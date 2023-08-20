@@ -295,7 +295,7 @@ class Collection(object):
         return "<Collection at '/%s'>" % self.config.name
 
     def total(self):
-        return self.search(page_size=0).total_records
+        return self.search().total_records
     
     def get(self, path='/', *args, **kwargs):
         path = self.url(path)

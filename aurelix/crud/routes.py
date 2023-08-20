@@ -53,8 +53,8 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
                           page: int = 0, page_size: int = 10, order_by: str | None = None) -> ModelSearchResult:
             if page_size > max_page_size:
                 page_size = 100
-            if page_size < 0:
-                page_size = 0
+            if page_size < 1:
+                page_size = 1
             col = Collection(request)
             if order_by:
                 order_by = [o.split(':') for o in order_by.strip().replace(',',' ').split(' ')]
