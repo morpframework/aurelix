@@ -263,6 +263,7 @@ def generate_sqlalchemy_collection(app: fastapi.FastAPI,
     attrs = {
         'name': spec.name,
         'Schema': schema,
+        'permissionFilters': spec.permissionFilters,
         '__init__': constructor       
     }
     for m in ['transform_create_data', 'transform_update_data', 

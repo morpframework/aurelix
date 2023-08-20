@@ -5,16 +5,21 @@ import pydantic
 import datetime
 import traceback
 from ..utils import validate_types
+from ..dependencies import get_permission_identities
 import dectate
 from transitions import Machine
 import typing
-
+from .. import schema
+from .. import exc
 
 from .base import BaseCollection
 from ..exc import SearchException
 
 class SQLACollection(BaseCollection):
 
+    name: str
+    Schema: type[pydantic.BaseModel]
+    permissionFilters: list[schema.PermissionFilterSpec]
 
     @validate_types
     def __init__(self, request: fastapi.Request, 
@@ -35,42 +40,72 @@ class SQLACollection(BaseCollection):
     async def create(self, item: pydantic.BaseModel) -> pydantic.BaseModel:
         data = await self.transform_create_data(item)
         await self.before_create(data)
-        query = self.table.insert().values(**data)
-        new_id = await self.db.execute(query)
-        item = await self.get_by_id(new_id)
+        async with self.db.transaction() as txn:
+            query = self.table.insert().values(**data)
+            new_id = await self.db.execute(query)
+            item = await self.get_by_id(new_id)
+            if item is None:
+                raise exc.Unauthorized("You are not allowed to create this object")
         await self.after_create(item)
         return item
 
-    async def _get_by_field(self, field, value):
-        query = self.table.select().where(getattr(self.table.c, field)==value)
+    async def _get_by_field(self, field, value, secure: bool = True):
+        filters = []
+        if secure:
+            filters = await self.get_permission_filters()
+
+        filters.append(getattr(self.table.c, field)==value)
+        query = self.table.select().where(sa.and_(*filters))
         item = await self.db.fetch_one(query)
         if item == None:
+            if secure:
+                insecure_item = await self._get_by_field(field, value, secure=False)
+                if insecure_item:
+                    raise exc.Unauthorized("You are not allowed to access this object")
             return None
         item = self.Schema.model_validate(item._asdict())
         return item       
     
     @validate_types
-    async def get_by_id(self, id: int):
-        return await self._get_by_field('id', id)
+    async def get_by_id(self, id: int, secure: bool = True):
+        return await self._get_by_field('id', id, secure)
 
     @validate_types
-    async def get(self, identifier: str):
+    async def get(self, identifier: str, secure: bool=True):
         if hasattr(self.table.c, 'name'):
-            return await self._get_by_field('name', identifier)
+            return await self._get_by_field('name', identifier, secure)
         try:
             identifier = int(identifier)
         except ValueError:
             return None
-        return await self.get_by_id(int(identifier))
+        return await self.get_by_id(int(identifier), secure)
 
+    async def get_permission_filters(self) -> list[sa.text]:
+        if not self.permissionFilters:
+            return []
+        
+        filters = []
+        identities = await get_permission_identities(self.request)
+        for f in self.permissionFilters:
+            if '*' in f.identities:
+                filters.append(sa.text(f.whereFilter))
+            for i in identities:
+                if i in f.identities:
+                    filters.append(sa.text(f.whereFilter))
+        return filters
+    
     @validate_types
     async def search(self, query: str | None, offset: int = 0, limit: int | None = None, 
-               order_by: list[tuple[str,str]] | None = None):
+               order_by: list[tuple[str,str]] | None = None, secure: bool =True):
         
         db_query = self.table.select()
+        filters = []
+        if secure:
+            filters = await self.get_permission_filters()
         if query: 
-            filter = sa.text(query)
-            db_query = db_query.where(filter)
+            filters.append(sa.text(query))
+        if filters:
+            db_query = db_query.where(sa.and_(*filters))
         db_query = db_query.limit(limit).offset(offset)
         if order_by:
             orderby = []
@@ -89,48 +124,78 @@ class SQLACollection(BaseCollection):
         return items
     
     @validate_types
-    async def count(self, query: str | None) -> int:
+    async def count(self, query: str | None, secure=True) -> int:
         db_query = sa.select([sa.func.count()]).select_from(self.table)
+        filters  = []
+        if secure:
+            filters = await self.get_permission_filters()
+
         if query: 
-            filter = sa.text(query)
-            db_query = db_query.where(filter)
+            filters.append(sa.text(query))
+        if filters:
+            db_query = db_query.where(sa.and_(*filters))
         try:
             result = await self.db.fetch_one(db_query)
         except Exception as e:
             raise SearchException(str(e))
         return result[0]
 
-    async def _update_by_field(self, field, value, item):
+    async def _update_by_field(self, field, value, item, secure: bool=True):
         data = await self.transform_update_data(item)
         await self.before_update(data)
-        query = self.table.update().where(getattr(self.table.c, field)==value).values(**data)
-        await self.db.execute(query)
-        item = await self._get_by_field(field, value)
+        filters = []
+        if secure:
+            filters = await self.get_permission_filters()
+
+        filters.append(getattr(self.table.c, field)==value)
+        async with self.db.transaction() as txn:
+            query = self.table.update().where(sa.and_(*filters)).values(**data)
+            await self.db.execute(query)
+            item = await self._get_by_field(field, value, secure)
+            if item is None:
+                raise exc.Unauthorized("You are not allowed to update this object")
         await self.after_update(item)
         return item
     
     @validate_types
-    async def update_by_id(self, id: int, item: pydantic.BaseModel):
-        return await self._update_by_field('id', id, item)
+    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True):
+        return await self._update_by_field('id', id, item, secure)
 
     @validate_types
-    async def update(self, name: str, item: pydantic.BaseModel):
-        result = await self.update_by_id(int(name), item)
-        return result
+    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True):
+        if hasattr(self.table.c, 'name'):
+            return await self._update_by_field('name', identifier, item, secure)
+        try:
+            identifier = int(identifier)
+        except ValueError:
+            return None
+        return await self.update_by_id(int(identifier), item, secure)
 
-    async def _delete_by_field(self, field, value):
-        item = await self._get_by_field(field, value)
+    async def _delete_by_field(self, field, value, secure=True):
+        item = await self._get_by_field(field, value, secure)
+        if item is None:
+            raise exc.Unauthorized('You are not allowed to delete this object')
         data = await self.transform_delete_data(item)
         await self.before_delete(item)
-        query = self.table.delete().where(getattr(self.table.c, field)==value)
+        filters = []
+        if secure:
+            filters = await self.get_permission_filters()
+        filters.append(getattr(self.table.c, field)==value)
+        query = self.table.delete().where(sa.and_(*filters))
         await self.db.execute(query)
         await self.after_delete(data)
         return True       
     
     @validate_types
-    async def delete_by_id(self, id: int):
-        return await self._delete_by_field('id', id)
+    async def delete_by_id(self, id: int, secure: bool = True):
+        return await self._delete_by_field('id', id, secure)
 
     @validate_types
-    async def delete(self, name: str):
-        return await self.delete_by_id(int(name))
+    async def delete(self, identifier: str, secure: bool = True):
+        if hasattr(self.table.c, 'name'):
+            return await self._delete_by_field('name', identifier, secure)
+        try:
+            identifier = int(identifier)
+        except ValueError:
+            return None
+        return await self.delete_by_id(int(identifier), secure)

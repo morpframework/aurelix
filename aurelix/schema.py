@@ -82,6 +82,10 @@ class StateMachineSpec(pydantic.BaseModel):
     states: list[StateMachineStateSpec] 
     transitions: list[StateMachineTransitionSpec]
 
+class PermissionFilterSpec(pydantic.BaseModel):
+    identities: list[str]
+    whereFilter: str
+
 class ModelSpec(pydantic.BaseModel):
 
     name: str
@@ -99,6 +103,7 @@ class ModelSpec(pydantic.BaseModel):
     transformCreateData: CodeRefSpec | None = None 
     transformUpdateData: CodeRefSpec | None = None 
     transformOutputData: CodeRefSpec | None = None
+    permissionFilters: list[PermissionFilterSpec] | None = None
     maxPageSize: int = 100
 
 class DatabaseSpec(pydantic.BaseModel):

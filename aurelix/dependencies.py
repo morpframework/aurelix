@@ -89,3 +89,15 @@ async def get_userinfo(request: fastapi.Request) -> schema.OIDCUserInfo:
     token = await _get_token(request, oidc_settings)
     userinfo = await _get_userinfo(token, oidc_settings)
     return userinfo
+
+async def get_permission_identities(request: fastapi.Request) -> list[str]:
+    userinfo = await get_userinfo(request)
+    res = []
+    if userinfo.sub:
+        res.append('sub:%s' % userinfo.sub)
+    if userinfo.email and userinfo.email_verified:
+        res.append('email:%s' % userinfo.email)
+    if userinfo.groups:
+        for g in userinfo.groups:
+            res.append('group:%s' % g)
+    return res

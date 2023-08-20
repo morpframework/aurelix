@@ -50,7 +50,7 @@ class APIClient(object):
     
     def _authenticate(self, username: str = None, password: str = None, refresh_token: str = None, 
                      grant_type: str='password', scope: list[str]=None):
-        scope = scope or self._scope or ['openid','email', 'profile']
+        scope = scope or self._scope or ['openid','email', 'profile', 'offline_access']
         self._scope = scope
         if not self.client_id:
             return None
@@ -70,7 +70,7 @@ class APIClient(object):
             payload['refresh_token'] = refresh_token
         resp = requests.post(token_endpoint, data=payload)
         if resp.status_code != 200:
-            raise RemoteException("Unable to authenticate (Error %s)" % resp.status_code)
+            raise RemoteException("Unable to authenticate (Error %s : %s)" % (resp.status_code, resp.text))
         token = schema.OIDCTokenResponse.model_validate(resp.json())
         self._token = token
         self._token_expiry = time() + token.expires_in
