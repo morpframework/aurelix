@@ -268,7 +268,10 @@ def generate_sqlalchemy_collection(app: fastapi.FastAPI,
             impl = load_code_ref(coderef)
             if impl:
                 attrs[m] = impl
-    return typing.Annotated[type(name, (SQLACollection, ), attrs), fastapi.Depends(get_collection)]
+    def _get_collection(request: fastapi.Request):
+        return get_collection(request)
+    
+    return typing.Annotated[type(name, (SQLACollection, ), attrs), fastapi.Depends(_get_collection)]
 
 @validate_types
 def generate_pydantic_model(spec: schema.ModelSpec, name: str = 'Schema'):

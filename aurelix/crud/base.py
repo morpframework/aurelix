@@ -5,7 +5,7 @@ import pydantic
 import fastapi
 import datetime
 from .. import exc
-from ..dependencies import get_userinfo_from_request
+from ..dependencies import get_userinfo
 import typing
 
 class StateMachine(object):
@@ -138,7 +138,7 @@ class BaseCollection(dectate.App):
         # delete protected fields
         for k in ['id']:
             if k in data: del data[k]
-        userinfo = await get_userinfo_from_request(self.request)
+        userinfo = await get_userinfo(self.request)
         data['creator'] = userinfo.email
         data['dateCreated'] = datetime.datetime.utcnow()
         data['dateModified'] = datetime.datetime.utcnow()
@@ -152,7 +152,7 @@ class BaseCollection(dectate.App):
         # delete protected fields
         for k in ['id']:
             if k in data: del data[k]
-        userinfo = await get_userinfo_from_request(self.request)
+        userinfo = await get_userinfo(self.request)
         data['editor'] = userinfo.email
         data['dateModified'] = datetime.datetime.utcnow()
         return data

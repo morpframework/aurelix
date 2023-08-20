@@ -14,7 +14,10 @@ async def get_collection(request: fastapi.Request, name: str = None) -> BaseColl
         raise exc.CollectionNotFoundException(request.url.path)
     return request.app.collection[name](request)
 
-Collection = typing.Annotated[BaseCollection, fastapi.Depends(get_collection)]
+async def _get_collection(request: fastapi.Request):
+    return get_collection(request)
+
+Collection = typing.Annotated[BaseCollection, fastapi.Depends(_get_collection)]
 
 async def get_model(request: fastapi.Request, collection: Collection):
     if not 'identifier' in request.path_params:

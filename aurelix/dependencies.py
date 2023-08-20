@@ -16,7 +16,7 @@ def get_oidc_configuration(request: fastapi.Request):
 
 OIDCConfiguration = typing.Annotated[schema.OIDCConfiguration, fastapi.Depends(get_oidc_configuration)]
 
-async def get_token(request: fastapi.Request, oidc_settings: OIDCConfiguration):
+async def _get_token(request: fastapi.Request, oidc_settings: OIDCConfiguration):
     if not oidc_settings:
         return None
     authorization = request.headers.get("Authorization")
@@ -32,14 +32,14 @@ async def get_token(request: fastapi.Request, oidc_settings: OIDCConfiguration):
 class OAuth2Mixin(object):
 
     async def __call__(self, request: fastapi.Request, oidc_settings: OIDCConfiguration) -> str:
-        return await get_token(request, oidc_settings)
+        return await _get_token(request, oidc_settings)
     
 class PasswordBearerScheme(OAuth2Mixin, OAuth2PasswordBearer):
     pass
 
 env_settings = Settings()
 
-Token = typing.Annotated[str, fastapi.Depends(get_token)]
+Token = typing.Annotated[str, fastapi.Depends(_get_token)]
 
 if env_settings.OIDC_DISCOVERY_ENDPOINT:
     with httpx.Client() as client:
@@ -58,7 +58,7 @@ if env_settings.OIDC_DISCOVERY_ENDPOINT:
             )
         ]
     
-async def get_userinfo(token: Token, oidc_settings: OIDCConfiguration) -> schema.OIDCUserInfo:
+async def _get_userinfo(token: Token, oidc_settings: OIDCConfiguration) -> schema.OIDCUserInfo:
     if token is None:
         return None
     async with httpx.AsyncClient() as client:
@@ -77,10 +77,15 @@ async def get_userinfo(token: Token, oidc_settings: OIDCConfiguration) -> schema
                 userinfo['groups'] = userinfo['roles']
         return schema.OIDCUserInfo.model_validate(userinfo)
 
-UserInfo = typing.Annotated[schema.OIDCUserInfo, fastapi.Depends(get_userinfo)]
+UserInfo = typing.Annotated[schema.OIDCUserInfo, fastapi.Depends(_get_userinfo)]
 
-async def get_userinfo_from_request(request: fastapi.Request) -> schema.OIDCUserInfo:
+async def get_token(request: fastapi.Request) -> str:
     oidc_settings = get_oidc_configuration(request)
-    token = await get_token(request)
-    userinfo = await get_userinfo(token, oidc_settings)
+    token = await _get_token(request, oidc_settings)
+    return token
+
+async def get_userinfo(request: fastapi.Request) -> schema.OIDCUserInfo:
+    oidc_settings = get_oidc_configuration(request)
+    token = await _get_token(request, oidc_settings)
+    userinfo = await _get_userinfo(token, oidc_settings)
     return userinfo
