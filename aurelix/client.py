@@ -87,9 +87,9 @@ class APIClient(object):
     
     def request(self, method, path, *args, **kwargs):
         url = self.url(path)
-        if self._token:
+        if self.token:
             kwargs.setdefault('headers', {})
-            kwargs['headers']['Authorization'] = self._token.token_type + ' ' + self._token.access_token
+            kwargs['headers']['Authorization'] = self.token.token_type + ' ' + self.token.access_token
         resp: requests.Response = getattr(requests, method.lower())(url, *args, **kwargs)
         if resp.status_code != 200:
             try:
