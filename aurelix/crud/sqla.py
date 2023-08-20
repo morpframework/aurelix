@@ -112,8 +112,14 @@ class SQLACollection(BaseCollection):
             orderby = []
             for c,d in order_by:
                 column = c
+                if getattr(self.table.c, c, None) is None:
+                    raise exc.ValidationError("Invalid sort field '%s'" % c)
                 if d.lower() == 'desc':
                     column += ' desc'
+                elif d.lower() == 'asc':
+                    column += ' asc'
+                else:
+                    raise exc.ValidationError("Invalid sort direction '%s'" % d)
                 orderby.append(sa.text(column))
             db_query = db_query.order_by(*orderby)
         try:
