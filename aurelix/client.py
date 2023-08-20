@@ -309,6 +309,9 @@ class Collection(object):
     def delete(self, path='/', *args, **kwargs):
         path = self.url(path)
         return self.api.delete(path, *args, **kwargs)
+    
+    def delete_item(self):
+        return self.delete(json={'delete': True})
 
 
     def put(self, path='/', *args, **kwargs):
