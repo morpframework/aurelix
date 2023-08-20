@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Body
 import pydantic
 import typing
 import math
@@ -44,6 +44,11 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
     ModelInput = pydantic.create_model(
         Schema.__name__ + 'Input',
         **dict([(k,(v.annotation, v.default)) for k,v in Schema.model_fields.items() if k not in Model.model_fields.keys()])
+    )
+
+    ModelPatchInput = pydantic.create_model(
+        Schema.__name__ + 'PatchInput',
+         **dict([(k,(v.annotation | None, v.default)) for k,v in Schema.model_fields.items() if k not in Model.model_fields.keys()])       
     )
 
 
@@ -100,9 +105,20 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
 
     if update_enabled:
         @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
-        async def update(request: Request, userinfo: UserInfo, identifier: str, col:Collection, model: Model, item: ModelInput) -> ModelResult:
+        async def update(request: Request, userinfo: UserInfo, identifier: str, col:Collection, item: ModelInput) -> ModelResult:
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
+        
+        @Collection.view('/{identifier}', method='PATCH', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
+        async def update_patch(request: Request, userinfo: UserInfo, identifier: str, col:Collection, patch: typing.Annotated[dict, Body()]) -> ModelResult:
+            ModelPatchInput.model_validate(patch)
+            src_item = await col.get(identifier)
+            item = ModelPatchInput.model_validate(src_item.model_dump())
+            for k, v in patch.items():
+                setattr(item, k, v)
+            item = await col.update(identifier, item)
+            return ModelResult.model_validate({'data': await item_json(col, item)})
+
     
     if delete_enabled:
         @Collection.view('/{identifier}', method='DELETE', openapi_extra=openapi_extra, summary='Delete %s' % snake_to_human(collection_name))

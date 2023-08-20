@@ -145,8 +145,13 @@ class Model(object):
 
     def __getitem__(self, key: str) -> typing.Any: 
         return self.data['attributes'][key]
-    
+
     def update(self, data: dict):
+        self.patch(json=data)
+        self.data = self.get()['data']
+        return True
+
+    def update_full(self, data: dict):
         attrs = self.data['attributes']
         attrs.update(data)
         self.put(json=attrs)
@@ -231,6 +236,17 @@ class SearchResult(object):
             for o in next:
                 yield o
 
+    def __getitem__(self, key) -> Model:
+        for idx, m in self:
+            if key == idx:
+                return m
+    
+    def current_items(self) -> list[Model]:
+        result = []
+        for d in self.result['data']:
+            result.append(Model(self.api, self.collection, d))
+        return result
+
     def next(self) -> 'SearchResult':
         next_url = self.result['links'].get('next', None)
         if next_url:
@@ -268,12 +284,14 @@ class Collection(object):
         return self.config.links['self']
 
     def __getitem__(self, key) -> Model: 
+        key = str(key)
         return self.get_item(key)
     
     def __iter__(self) -> typing.Iterator[Model]:
         return self.search(page_size=100).__iter__()
     
     def get_item(self, name: str | int) -> Model:
+        name = str(name)
         data = self.get(name)
         return Model(self.api, self, data['data'])
     
@@ -281,13 +299,16 @@ class Collection(object):
         result = self.post(json=data)
         return Model(self.api, self, result['data'])
     
-    def search(self, query:str=None, page: int =0, page_size: int=10):
+    def search(self, query:str=None, page: int =0, page_size: int=10, order_by: list[tuple[str, str]] = None):
+        order_by = order_by or []
         payload = {
             'page': page,
             'page_size':page_size
         }
         if query:
             payload['query'] = query
+        if order_by:
+            payload['order_by'] = ','.join([':'.join(o) for o in order_by])
         result = self.get(params=payload)
         return SearchResult(self.api, self, result)
     
