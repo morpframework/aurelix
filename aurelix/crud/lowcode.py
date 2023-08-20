@@ -11,7 +11,7 @@ import pydantic
 import importlib
 from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from ..crud.sqla import SQLACollection
-from ..crud.base import StateMachine
+from ..crud.base import StateMachine, ExtensibleViewsApp
 from ..crud.routes import register_collection
 from .dependencies import get_collection, Collection, Model
 from ..exc import AurelixException
@@ -102,6 +102,7 @@ async def load_app(path: str):
                           swagger_ui_init_oauth=init_oauth or None)
     state.APP_STATE.setdefault(app, {})
     state.APP_STATE[app]['settings'] = spec
+    state.APP_STATE[app]['views'] = ExtensibleViewsApp()
 
     if spec.libs_directory:
         ld_path = os.path.join(spec_dir, spec.libs_directory)
@@ -136,7 +137,7 @@ async def load_app(path: str):
             oidc_settings = schema.OIDCConfiguration.model_validate(resp.json())
             state.APP_STATE[app]['oidc_settings'] = oidc_settings
         
-    register_views(app)
+    register_views(app, spec)
 
     return app
 
@@ -346,7 +347,7 @@ def get_sa_column(field_name: str, field_spec: schema.FieldSpec):
     return sa.Column(*args, **kwargs)
 
 
-def register_views(app: fastapi.FastAPI):
+def register_views(app: fastapi.FastAPI, spec: schema.AppSpec):
     @app.exception_handler(AurelixException)
     async def search_exception_handler(request: fastapi.Request, exc: AurelixException):
         return JSONResponse(
@@ -368,33 +369,55 @@ def register_views(app: fastapi.FastAPI):
             content={"detail": exc.value},
         )
     
-
-    @app.get('/.well-known/aurelix-configuration', include_in_schema=False)
-    async def aurelix_configuration(request: fastapi.Request) -> schema.WellKnownConfiguration:
-        app = request.app
-        settings = state.APP_STATE[app]['settings']
-        models = state.APP_STATE[app]['models']
-        oidc_settings = state.APP_STATE[app].get('oidc_settings', None)
-        cols = {}
-        for name, spec in models.items():
-            col = await get_collection(request, name)
-            info = {
-                'name': name,
-                'schema': col.Schema.model_json_schema(),
-                'links': {
-                    'self': col.url()
+    if spec.views.well_known_config.enabled:
+        @app.get('/.well-known/aurelix-configuration', include_in_schema=False)
+        async def aurelix_configuration(request: fastapi.Request) -> schema.WellKnownConfiguration:
+            app = request.app
+            settings = state.APP_STATE[app]['settings']
+            models = state.APP_STATE[app]['models']
+            oidc_settings = state.APP_STATE[app].get('oidc_settings', None)
+            cols = {}
+            for name, spec in models.items():
+                col = await get_collection(request, name)
+                info = {
+                    'name': name,
+                    'schema': col.Schema.model_json_schema(),
+                    'links': {
+                        'self': col.url()
+                    }
                 }
+                if spec.stateMachine:
+                    info['stateMachine'] = {
+                        'triggers': [{'name': t.trigger, 'label': t.label, 'source': t.source} for t in spec.stateMachine.transitions], 
+                        'states': [{'name': s.value, 'label': s.label} for s in spec.stateMachine.states],
+                        'field': spec.stateMachine.field
+                    }
+                cols[name] = info
+            result = {
+                'collections': cols
             }
-            if spec.stateMachine:
-                info['stateMachine'] = {
-                    'triggers': [{'name': t.trigger, 'label': t.label, 'source': t.source} for t in spec.stateMachine.transitions], 
-                    'states': [{'name': s.value, 'label': s.label} for s in spec.stateMachine.states],
-                    'field': spec.stateMachine.field
-                }
-            cols[name] = info
-        result = {
-            'collections': cols
-        }
-        if oidc_settings:
-            result['openid-configuration'] = oidc_settings.model_dump()
-        return result
+            if oidc_settings:
+                result['openid-configuration'] = oidc_settings.model_dump()
+            return result
+
+    views_app: ExtensibleViewsApp = state.APP_STATE[app]['views']
+    if spec.views.extensions:
+        views = spec.views.extensions
+        for vpath, vspec in views.items():
+            tags = vspec.tags
+            view_opts = dict((k,v) for k,v in vspec.model_dump().items() if k not in ['handler', 'tags'])
+            if tags and view_opts.get('openapi_extra', None):
+                view_opts['openapi_extra']['tags'] = tags
+            else:
+                view_opts['openapi_extra'] = {'tags': tags}
+            coderef = vspec.handler
+            if coderef:
+                impl = load_code_ref(coderef)
+                if impl:
+                    views_app.view(vpath, **view_opts)(impl)
+        
+        _routes = views_app.routes()
+        for r in _routes:
+            path = r['path']
+            getattr(app, r['method'])(path, **r['options'])(r['function'])
+

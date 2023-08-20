@@ -129,12 +129,14 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
             }
         
     _routes = Collection.routes()
-    for r in _routes['collection']:
+    collection_views = [v for v in _routes if not v['path'].startswith('/{identifier}')]
+    model_views = [v for v in _routes if v['path'].startswith('/{identifier}')]
+
+    for r in collection_views:
         path = base_path + r['path']
         getattr(app, r['method'])(path, **r['options'])(r['function'])
 
-
-    for r in _routes['model']:
+    for r in model_views:
         path = base_path + r['path']
         getattr(app, r['method'])(path, **r['options'])(r['function'])
 

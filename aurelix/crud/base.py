@@ -51,35 +51,29 @@ class ViewAction(dectate.Action):
                 'function': obj
         }
 
-class BaseCollection(dectate.App):
-    name: str
-    Schema: type[pydantic.BaseModel]
-    StateMachine: type[StateMachine]
+class ExtensibleViewsApp(dectate.App):
 
     view = dectate.directive(ViewAction)
-
-    @validate_types
-    def __init__(self, request: fastapi.Request):
-        self.request = request
-
-    @classmethod
-    def get_directive_methods(cls):
-        # workaround with manual specification because this conflicts with pydantic
-        yield 'view', cls.view
- 
 
     @classmethod
     def routes(cls):
         dectate.commit(cls)
         views = cls.config.views
-        collection_views = [v for k,v in views.items() if not v['path'].startswith('/{identifier}')]
-        model_views = [v for k,v in views.items() if v['path'].startswith('/{identifier}')]
-        return {
-            'collection': sorted(collection_views, key=lambda v: len(v['path'])),
-            'model': sorted(model_views, key=lambda v: len(v['path']))
-        }
+        return sorted(views.values(), key=lambda v: len(v['path']))
     
+    @classmethod
+    def get_directive_methods(cls):
+        # workaround with manual specification because this conflicts with pydantic
+        yield 'view', cls.view
+ 
+class BaseCollection(ExtensibleViewsApp):
+    name: str
+    Schema: type[pydantic.BaseModel]
+    StateMachine: type[StateMachine]
 
+    @validate_types
+    def __init__(self, request: fastapi.Request):
+        self.request = request
 
     @validate_types
     def get_item_name(self, item: pydantic.BaseModel) -> str:

@@ -49,13 +49,13 @@ class CodeRefSpec(pydantic.BaseModel):
     code: str | None = None
 
 class ExtensionViewSpec(pydantic.BaseModel):
-    method: RequestMethod
+    method: RequestMethod = 'GET'
     summary: str | None = None
     tags: list[str] | None = None
     openapi_extra: dict[str, typing.Any] | None = None
     handler: CodeRefSpec
 
-class ViewsSpec(pydantic.BaseModel):
+class ModelViewsSpec(pydantic.BaseModel):
 
     listing: ViewSpec = pydantic.Field(default_factory=ViewSpec)
     create: ViewSpec = pydantic.Field(default_factory=ViewSpec)
@@ -87,7 +87,7 @@ class ModelSpec(pydantic.BaseModel):
     name: str
     storageType: StorageTypeSpec
     fields: dict[str, FieldSpec]
-    views: ViewsSpec = pydantic.Field(default_factory=ViewsSpec)
+    views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec)
     tags: list[str]
     stateMachine: StateMachineSpec | None = None 
     beforeCreate: CodeRefSpec | None = None
@@ -110,6 +110,11 @@ class InitOAuthSpec(pydantic.BaseModel):
     client_id: str 
     client_secret: str
 
+class AppViewsSpec(pydantic.BaseModel):
+
+    well_known_config: ViewSpec = pydantic.Field(default_factory=ViewSpec)
+    extensions: dict[str, ExtensionViewSpec] | None = None
+
 class AppSpec(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(protected_namespaces=())
     debug: bool = False
@@ -125,6 +130,7 @@ class AppSpec(pydantic.BaseModel):
     libs_directory: str = 'libs'
     databases: list[DatabaseSpec] | None = None
     oidc_discovery_endpoint: str | None = None
+    views: AppViewsSpec = pydantic.Field(default_factory=AppViewsSpec)
 
 class SearchResultLinks(pydantic.BaseModel):
     next: str | None = None

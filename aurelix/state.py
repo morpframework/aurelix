@@ -8,6 +8,7 @@ class AppState(typing.TypedDict):
     settings: schema.AppSpec
     oidc_settings: schema.OIDCConfiguration
     models: dict[str, schema.ModelSpec]
+    views: typing.Any # aurelix.crud.base.ExtensibleViewsApp
 
 APP_STATE: dict[fastapi.FastAPI, AppState] = {}
 
