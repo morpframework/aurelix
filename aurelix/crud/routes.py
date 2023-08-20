@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException, Body
+import json
 import pydantic
 import typing
 import math
@@ -50,7 +51,6 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         Schema.__name__ + 'PatchInput',
          **dict([(k,(v.annotation | None, v.default)) for k,v in Schema.model_fields.items() if k not in Model.model_fields.keys()])       
     )
-
 
     if listing_enabled:
         @Collection.view('/', method='GET', openapi_extra=openapi_extra, summary='List %s' % snake_to_human(collection_name))
@@ -104,18 +104,23 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
             })
 
     if update_enabled:
-        @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
-        async def update(request: Request, userinfo: UserInfo, identifier: str, col:Collection, item: ModelInput) -> ModelResult:
-            item = await col.update(identifier, item)
-            return ModelResult.model_validate({'data': await item_json(col, item)})
+
+        
+        patch_example = json.dumps(ModelPatchInput().model_dump())
         
         @Collection.view('/{identifier}', method='PATCH', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
-        async def update_patch(request: Request, userinfo: UserInfo, identifier: str, col:Collection, patch: typing.Annotated[dict, Body()]) -> ModelResult:
+        async def update_patch(request: Request, userinfo: UserInfo, identifier: str, col:Collection, 
+                               patch: typing.Annotated[dict[str, typing.Any | None], Body(example=patch_example)]) -> ModelResult:
             ModelPatchInput.model_validate(patch)
             src_item = await col.get(identifier)
             item = ModelPatchInput.model_validate(src_item.model_dump())
             for k, v in patch.items():
                 setattr(item, k, v)
+            item = await col.update(identifier, item)
+            return ModelResult.model_validate({'data': await item_json(col, item)})
+        
+        @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, summary='Update %s (Full)' % snake_to_human(collection_name))
+        async def update(request: Request, userinfo: UserInfo, identifier: str, col:Collection, item: ModelInput) -> ModelResult:
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
 
