@@ -17,6 +17,9 @@ class GatewayError(AurelixException):
 class Unauthorized(AurelixException):
     status_code = 401
 
+class Forbidden(AurelixException):
+    status_code = 403
+
 class CollectionNotFoundException(AurelixException):
     status_code = 404
 

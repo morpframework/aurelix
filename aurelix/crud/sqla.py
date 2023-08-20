@@ -45,7 +45,7 @@ class SQLACollection(BaseCollection):
             new_id = await self.db.execute(query)
             item = await self.get_by_id(new_id)
             if item is None:
-                raise exc.Unauthorized("You are not allowed to create this object")
+                raise exc.Forbidden("You are not allowed to create this object")
         await self.after_create(item)
         return item
 
@@ -61,7 +61,7 @@ class SQLACollection(BaseCollection):
             if secure:
                 insecure_item = await self._get_by_field(field, value, secure=False)
                 if insecure_item:
-                    raise exc.Unauthorized("You are not allowed to access this object")
+                    raise exc.Forbidden("You are not allowed to access this object")
             return None
         item = self.Schema.model_validate(item._asdict())
         return item       
@@ -153,7 +153,7 @@ class SQLACollection(BaseCollection):
             await self.db.execute(query)
             item = await self._get_by_field(field, value, secure)
             if item is None:
-                raise exc.Unauthorized("You are not allowed to update this object")
+                raise exc.Forbidden("You are not allowed to update this object")
         await self.after_update(item)
         return item
     
@@ -174,7 +174,7 @@ class SQLACollection(BaseCollection):
     async def _delete_by_field(self, field, value, secure=True):
         item = await self._get_by_field(field, value, secure)
         if item is None:
-            raise exc.Unauthorized('You are not allowed to delete this object')
+            raise exc.Forbidden('You are not allowed to delete this object')
         data = await self.transform_delete_data(item)
         await self.before_delete(item)
         filters = []
