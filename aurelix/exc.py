@@ -8,6 +8,9 @@ class AurelixException(Exception):
 class SearchException(AurelixException):
     status_code = 422
 
+class ValidationError(AurelixException):
+    status_code = 422
+
 class GatewayError(AurelixException):
     status_code = 502
 

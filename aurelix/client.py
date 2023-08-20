@@ -2,7 +2,14 @@ import requests
 from . import schema
 from time import time
 import typing
-import json
+
+class RemoteException(Exception):
+    pass
+
+class ClientException(Exception):
+    pass
+
+
 
 class APIClient(object):
 
@@ -63,7 +70,7 @@ class APIClient(object):
             payload['refresh_token'] = refresh_token
         resp = requests.post(token_endpoint, data=payload)
         if resp.status_code != 200:
-            raise Exception("Unable to authenticate (Error %s)" % resp.status_code)
+            raise RemoteException("Unable to authenticate (Error %s)" % resp.status_code)
         token = schema.OIDCTokenResponse.model_validate(resp.json())
         self._token = token
         self._token_expiry = time() + token.expires_in
@@ -84,9 +91,15 @@ class APIClient(object):
             kwargs.setdefault('headers', {})
             kwargs['headers']['Authorization'] = self._token.token_type + ' ' + self._token.access_token
         resp: requests.Response = getattr(requests, method.lower())(url, *args, **kwargs)
-        data = resp.json()
         if resp.status_code != 200:
-            raise Exception(data['detail'])
+            try:
+                data = resp.json()
+            except requests.exceptions.JSONDecodeError:
+                data = None
+            if data:
+                raise RemoteException('Error %s: %s' % (resp.status_code, data['detail']))
+            raise RemoteException('Error %s' % resp.status_code)
+        data = resp.json()
         return data
     
     def get(self, path, *args, **kwargs):
@@ -100,6 +113,9 @@ class APIClient(object):
 
     def put(self, path, *args, **kwargs):
         return self.request(method='put', path=path, *args, **kwargs)
+    
+    def patch(self, path, *args, **kwargs):
+        return self.request(method='patch', path=path, *args, **kwargs)
         
     def get_config(self) -> schema.WellKnownConfiguration:
         data = self.get('/.well-known/aurelix-configuration')
@@ -133,12 +149,8 @@ class Model(object):
     def update(self, data: dict):
         attrs = self.data['attributes']
         attrs.update(data)
-        self.api.put(self.url(), json=attrs)
-        self.data = self.api.get(self.url())['data']
-        return True
-
-    def delete(self):
-        self.api.delete(self.url(), json={'delete': True})
+        self.put(json=attrs)
+        self.data = self.get()['data']
         return True
 
     def triggers(self):
@@ -159,15 +171,25 @@ class Model(object):
     def transition(self, trigger, data: dict = None):
         triggers = self.triggers()
         if trigger not in triggers:
-            raise Exception("Trigger %s is unavailable. Valid triggers are: %s" % (json.dumps(triggers)))
+            message = "Unable to trigger '%s' from state '%s'." % (trigger, self.state)
+            if triggers:
+                message += ' Valid triggers are: %s.' % ', '.join(['%s' % t for t in triggers])
+            raise ClientException(message)
         payload = {
             'trigger': trigger
         }
         if data:
             payload['data'] = data
-        self.api.post(self.url('+transition'), json=payload)
-        self.data = self.api.get(self.url())['data']
+        self.post('/+transition', json=payload)
+        self.data = self.get()['data']
         return True
+    
+    @property
+    def state(self):
+        sm = self.collection.config.stateMachine
+        if sm:
+            return self[sm.field]
+        return None
     
     def __repr__(self) -> str:
         name = self['id']
@@ -175,6 +197,25 @@ class Model(object):
             name = self['name']
         return "<Model at '/%s/%s'>" % (self.collection.config.name, name)
 
+    def get(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.get(path, *args, **kwargs)
+
+    def post(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.post(path, *args, **kwargs)
+
+    def delete(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.delete(path, *args, **kwargs)
+
+    def put(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.put(path, *args, **kwargs)
+
+    def patch(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.patch(path, *args, **kwargs)
 
 class SearchResult(object):
     def __init__(self, api: APIClient, collection: 'Collection', result) -> None:
@@ -227,17 +268,17 @@ class Collection(object):
         return self.config.links['self']
 
     def __getitem__(self, key) -> Model: 
-        return self.get(key)
+        return self.get_item(key)
     
     def __iter__(self) -> typing.Iterator[Model]:
         return self.search(page_size=100).__iter__()
     
-    def get(self, name: str | int) -> Model:
-        data = self.api.get(self.url(name))
+    def get_item(self, name: str | int) -> Model:
+        data = self.get(name)
         return Model(self.api, self, data['data'])
     
     def create(self, data: dict) -> Model:
-        result = self.api.post(self.url(), json=data)
+        result = self.post(json=data)
         return Model(self.api, self, result['data'])
     
     def search(self, query:str=None, page: int =0, page_size: int=10):
@@ -247,7 +288,7 @@ class Collection(object):
         }
         if query:
             payload['query'] = query
-        result = self.api.get(self.url(), params=payload)
+        result = self.get(params=payload)
         return SearchResult(self.api, self, result)
     
     def __repr__(self) -> str:
@@ -255,6 +296,31 @@ class Collection(object):
 
     def total(self):
         return self.search(page_size=0).total_records
+    
+    def get(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.get(path, *args, **kwargs)
+
+    def post(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.post(path, *args, **kwargs)
+
+
+    def delete(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.delete(path, *args, **kwargs)
+
+
+    def put(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.put(path, *args, **kwargs)
+
+    
+    def patch(self, path='/', *args, **kwargs):
+        path = self.url(path)
+        return self.api.patch(path, *args, **kwargs)
+
+
 
 class Client(object):
 

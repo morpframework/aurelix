@@ -32,14 +32,20 @@ PY_TYPES = {
     'string': str,
     'text': str,
     'integer': int,
-    'boolean': bool
+    'boolean': bool,
+    'float': float,
+    'datetime': datetime.datetime,
+    'date': datetime.date,
 }
 
 SA_TYPES={
     'string': sa.String,
     'text': sa.Text,
     'integer': sa.Integer,
-    'boolean': sa.Boolean
+    'boolean': sa.Boolean,
+    'float': sa.Float,
+    'datetime': sa.types.DateTime,
+    'date': sa.types.Date,
 }
 
 def create_table(name, metadata, columns=None, indexes=None, constraints=None, *args):
@@ -268,8 +274,8 @@ def generate_sqlalchemy_collection(app: fastapi.FastAPI,
             impl = load_code_ref(coderef)
             if impl:
                 attrs[m] = impl
-    def _get_collection(request: fastapi.Request):
-        return get_collection(request)
+    async def _get_collection(request: fastapi.Request):
+        return await get_collection(request)
     
     return typing.Annotated[type(name, (SQLACollection, ), attrs), fastapi.Depends(_get_collection)]
 
@@ -368,7 +374,7 @@ def register_views(app: fastapi.FastAPI):
         app = request.app
         settings = state.APP_STATE[app]['settings']
         models = state.APP_STATE[app]['models']
-        oidc_settings = state.APP_STATE[app]['oidc_settings']
+        oidc_settings = state.APP_STATE[app].get('oidc_settings', None)
         cols = {}
         for name, spec in models.items():
             col = await get_collection(request, name)
@@ -386,7 +392,9 @@ def register_views(app: fastapi.FastAPI):
                     'field': spec.stateMachine.field
                 }
             cols[name] = info
-        return {
-            'collections': cols,
-            'openid-configuration': oidc_settings.model_dump()
+        result = {
+            'collections': cols
         }
+        if oidc_settings:
+            result['openid-configuration'] = oidc_settings.model_dump()
+        return result

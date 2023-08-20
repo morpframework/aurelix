@@ -15,7 +15,7 @@ async def get_collection(request: fastapi.Request, name: str = None) -> BaseColl
     return request.app.collection[name](request)
 
 async def _get_collection(request: fastapi.Request):
-    return get_collection(request)
+    return await get_collection(request)
 
 Collection = typing.Annotated[BaseCollection, fastapi.Depends(_get_collection)]
 

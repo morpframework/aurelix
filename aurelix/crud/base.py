@@ -139,7 +139,10 @@ class BaseCollection(dectate.App):
         for k in ['id']:
             if k in data: del data[k]
         userinfo = await get_userinfo(self.request)
-        data['creator'] = userinfo.email
+        creator = None
+        if userinfo:
+            creator = userinfo.email
+        data['creator'] = creator
         data['dateCreated'] = datetime.datetime.utcnow()
         data['dateModified'] = datetime.datetime.utcnow()
         return data
@@ -153,7 +156,10 @@ class BaseCollection(dectate.App):
         for k in ['id']:
             if k in data: del data[k]
         userinfo = await get_userinfo(self.request)
-        data['editor'] = userinfo.email
+        editor = None
+        if userinfo:
+            editor = userinfo.email
+        data['editor'] = editor
         data['dateModified'] = datetime.datetime.utcnow()
         return data
 
