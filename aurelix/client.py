@@ -80,7 +80,7 @@ class APIClient(object):
     def token(self):
         if self._token is None:
             return None
-        if time() < self._token_expiry:
+        if time() > self._token_expiry:
             token = self.refresh_token()
             self._token = token
         return self._token
@@ -353,6 +353,9 @@ class Client(object):
 
     def authenticate(self, username: str, password: str):
         self.api.authenticate(username, password)
+
+    def refresh_token(self):
+        self.api.refresh_token()
 
     def __getitem__(self, key) -> Collection:
         return self.get_collection(key)
