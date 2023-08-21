@@ -1,7 +1,5 @@
-Changelog for Aurelix
-======================
+# Changelog for Aurelix
 
-0.1 (unreleased)
---------------------
+## 0.1 (2023-08-21)
 
 - initial release
