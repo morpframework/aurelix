@@ -22,6 +22,7 @@ class FieldTypeSpec(pydantic.BaseModel):
     type: str
     size: int | None = None
     enum: list[EnumSpec] | None = None
+    options: dict[str, typing.Any] | None = None
     sa_options: dict[str, object] | None = None
 
 class FieldSpec(pydantic.BaseModel):

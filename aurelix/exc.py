@@ -5,6 +5,9 @@ class AurelixException(Exception):
         self.message = message
         super().__init__(*args)
 
+    def __str__(self) -> str:
+        return '%s.%s: %s' % (self.__class__.__module__, AurelixException.__class__.__name__, self.message)
+
 class SearchException(AurelixException):
     status_code = 422
 

@@ -12,6 +12,7 @@ from transitions import Machine
 import typing
 from .. import schema
 from .. import exc
+import os
 
 from .base import BaseCollection
 from ..exc import SearchException
@@ -210,21 +211,34 @@ class SQLACollection(BaseCollection):
 
 from sqlalchemy_utils.types.encrypted import encrypted_type
 
-def EncryptedString(*args, **kwargs):
-    engine_name = kwargs['engine'].lower()
-    opts = {}
+class EncryptedStringOptions(pydantic.BaseModel):
+    engine: str
+    key_env: str 
 
-    if engine_name == 'fernet':
-        opts['engine'] = encrypted_type.FernetEngine
-    elif engine_name == 'aes':
-        opts['engine'] = encrypted_type.AesEngine
-    elif engine_name == 'aes-gcm':
-        opts['engine'] = encrypted_type.AesGcmEngine
-    else:
-        raise exc.AurelixException("Unknown encryption engine %s" % engine_name)
+class EncryptedString(object):
     
-    if not kwargs['key']:
-        raise exc.AurelixException("Encryption key not provided")
-    opts['key'] = kwargs['key']
-
-    return sautils.types.StringEncryptedType(sa.String(*args), **opts)
+    def __init__(self, field_name, app_spec: schema.AppSpec, field_spec: schema.FieldSpec):
+        self.field_name = field_name
+        self.app_spec = app_spec
+        self.field_spec = field_spec
+        
+    def __call__(self, *args, **kwargs):
+        if self.field_spec.dataType.options == None:
+            raise exc.AurelixException("No options provided on 'encrypted-string' field '%s'" % self.field_name)
+        options = EncryptedStringOptions.model_validate(self.field_spec.dataType.options) 
+        engine_name = options.engine.lower()
+        opts = {}
+    
+        if engine_name == 'fernet':
+            opts['engine'] = encrypted_type.FernetEngine
+        elif engine_name == 'aes':
+            opts['engine'] = encrypted_type.AesEngine
+        elif engine_name == 'aes-gcm':
+            opts['engine'] = encrypted_type.AesGcmEngine
+        else:
+            raise exc.AurelixException("Unknown encryption engine %s" % engine_name)
+        
+        key = os.environ[options.key_env]
+        opts['key'] = key
+        
+        return sautils.types.StringEncryptedType(sa.String(*args, **kwargs), **opts)

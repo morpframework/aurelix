@@ -49,8 +49,17 @@ SA_TYPES={
     'float': sa.Float,
     'datetime': sa.types.DateTime,
     'date': sa.types.Date,
-    'encrypted-string': EncryptedString
 }
+
+def get_sa_type_factory(field_name: str, app_spec: schema.AppSpec, field_spec: schema.FieldSpec):
+    field_type = field_spec.dataType.type
+    type_factory = SA_TYPES.get(field_type, None)
+    if type_factory:
+        return type_factory
+    if field_type == 'encrypted-string':
+        return EncryptedString(field_name, app_spec, field_spec)
+    
+    return type_factory
 
 
 def create_table(name, metadata, columns=None, indexes=None, constraints=None, *args):
@@ -302,10 +311,11 @@ def generate_pydantic_model(spec: schema.ModelSpec, name: str = 'Schema'):
 @validate_types
 def generate_sqlalchemy_table(app, spec: schema.ModelSpec) -> sa.Table:
     metadata = state.APP_STATE[app]['databases'][spec.storageType.database]['metadata']
+    app_spec = state.APP_STATE[app]['settings']
     columns = []
     constraints = []
     for field_name, field_spec in spec.fields.items():
-        c = get_sa_column(field_name, field_spec)
+        c = get_sa_column(field_name, app_spec, field_spec)
         columns.append(c)
         if field_spec.foreignKey:
             constraints.append(
@@ -322,8 +332,10 @@ def generate_sqlalchemy_table(app, spec: schema.ModelSpec) -> sa.Table:
         constraints=constraints
     )
 
-def get_sa_column(field_name: str, field_spec: schema.FieldSpec):
-    type_class = SA_TYPES[field_spec.dataType.type]
+
+
+def get_sa_column(field_name: str, app_spec: schema.AppSpec, field_spec: schema.FieldSpec):
+    type_factory = get_sa_type_factory(field_name, app_spec, field_spec)
     type_args = []
     if field_spec.dataType.size:
         type_args.append(field_spec.dataType.size)
@@ -337,7 +349,7 @@ def get_sa_column(field_name: str, field_spec: schema.FieldSpec):
         kwargs['unique'] = field_spec.unique
     args = [
         field_name,
-        type_class(*type_args, **type_kwargs)
+        type_factory(*type_args, **type_kwargs)
     ]
     return sa.Column(*args, **kwargs)
 
