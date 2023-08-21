@@ -9,9 +9,9 @@ import yaml
 import sqlalchemy as sa
 import pydantic
 import importlib
-from ..utils import validate_types, snake_to_pascal, snake_to_camel
+from ..utils import validate_types, snake_to_pascal, snake_to_camel, copy_method_signature
 from ..crud.sqla import SQLACollection
-from ..crud.base import StateMachine, ExtensibleViewsApp
+from ..crud.base import StateMachine, ExtensibleViewsApp, BaseCollection
 from ..crud.routes import register_collection
 from .dependencies import get_collection, Collection, Model
 from ..exc import AurelixException
@@ -48,6 +48,16 @@ SA_TYPES={
     'date': sa.types.Date,
 }
 
+class App(fastapi.FastAPI):
+
+    collection: dict[str, BaseCollection]
+
+    @copy_method_signature(fastapi.FastAPI.__init__)
+    def __init__(self, *args, **kwargs):
+        self.collection = {}
+        super().__init__(*args, **kwargs)
+
+
 def create_table(name, metadata, columns=None, indexes=None, constraints=None, *args):
     columns = columns or []
     indexes = indexes or []
@@ -69,18 +79,6 @@ def create_table(name, metadata, columns=None, indexes=None, constraints=None, *
         *args
     )
 
-
-class Registry(dict):
-
-    def __getattr__(self, __key: Any) -> Any:
-        return self[__key]
-    
-    def __setattr__(self, __name: str, __value: Any) -> None:
-        self[__name] = __value
-
-    def __delattr__(self, __name: str) -> None:
-        del self[__name]
-    
 async def load_app(path: str):
 
     with open(path) as f:
@@ -95,7 +93,7 @@ async def load_app(path: str):
     if init_oauth.keys() and spec.title:
         init_oauth['appName'] = spec.title
 
-    app = fastapi.FastAPI(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
+    app = App(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
                           docs_url=spec.docs_url, redoc_url=spec.redoc_url, 
                           swagger_ui_oauth2_redirect_url=spec.swagger_ui_oauth2_redirect_url,
                           terms_of_service=spec.terms_of_service,
@@ -141,15 +139,14 @@ async def load_app(path: str):
 
     return app
 
-def db_upgrade(app: fastapi.FastAPI):
+def db_upgrade(app: App):
     for m in state.APP_STATE[app]['databases'].values():
         metadata = m['metadata']
         engine = m['engine']
         metadata.create_all(engine)
 
 
-def load_app_models(app, directory_path):
-    app.collection = Registry()
+def load_app_models(app: App, directory_path):
     for fn in glob.glob('*.yaml', root_dir=directory_path):
         res = load_model_spec(app, os.path.join(directory_path, fn))
         spec = res['spec']
@@ -173,7 +170,7 @@ def load_app_models(app, directory_path):
             max_page_size=spec.maxPageSize,
         )
 
-def load_model_spec(app: fastapi.FastAPI, path: str):
+def load_model_spec(app: App, path: str):
 
     with open(path) as f:
         spec: schema.ModelSpec = schema.ModelSpec.model_validate(yaml.safe_load(f))
@@ -250,7 +247,7 @@ def load_code_ref(spec: schema.CodeRefSpec, package=None):
 
 
 @validate_types
-def generate_sqlalchemy_collection(app: fastapi.FastAPI,
+def generate_sqlalchemy_collection(app: App,
                                    spec: schema.ModelSpec, 
                                    schema: type[pydantic.BaseModel], 
                                    table: sa.Table,
@@ -348,7 +345,7 @@ def get_sa_column(field_name: str, field_spec: schema.FieldSpec):
     return sa.Column(*args, **kwargs)
 
 
-def register_views(app: fastapi.FastAPI, spec: schema.AppSpec):
+def register_views(app: App, spec: schema.AppSpec):
     @app.exception_handler(AurelixException)
     async def search_exception_handler(request: fastapi.Request, exc: AurelixException):
         return JSONResponse(

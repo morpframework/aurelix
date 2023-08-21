@@ -1,6 +1,8 @@
 import pydantic
 import enum
 import fastapi
+import typing
+import functools
 
 def validate_types(func):
     return pydantic.validate_call(config={'arbitrary_types_allowed': True})(func)
@@ -23,3 +25,16 @@ async def item_json(col, item):
             'self': col.url(item),
             'collection': col.url()
         }}
+
+P = typing.ParamSpec('P')
+T = typing.TypeVar('T')
+
+def copy_method_signature(source: typing.Callable[typing.Concatenate[typing.Any, P], T]) -> typing.Callable[[typing.Callable], typing.Callable[typing.Concatenate[typing.Any, P], T]]:
+    def wrapper(target: typing.Callable) -> typing.Callable[typing.Concatenate[typing.Any, P], T]:
+        @functools.wraps(source)
+        def wrapped(self, *args: P.args, **kwargs: P.kwargs) -> T:
+            return target(self, *args, **kwargs)
+
+        return wrapped
+
+    return wrapper
