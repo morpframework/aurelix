@@ -14,6 +14,7 @@ from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine, ExtensibleViewsApp, BaseCollection
 from ..crud.routes import register_collection
 from .dependencies import get_collection, Collection, Model, App
+from ..dependencies import UserInfo
 from ..exc import AurelixException
 from ..settings import Settings
 from .. import schema
@@ -229,6 +230,8 @@ def load_code_ref(spec: schema.CodeRefSpec, package=None):
         # FIXME: make this configurable through dectate or something
         namespace = {'fastapi': fastapi,
                      'Request': fastapi.Request, 
+                     'App': App,
+                     'UserInfo': UserInfo,
                      'Collection': Collection, 
                      'get_collection': get_collection, 
                      'Model': Model}
