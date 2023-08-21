@@ -9,11 +9,11 @@ import yaml
 import sqlalchemy as sa
 import pydantic
 import importlib
-from ..utils import validate_types, snake_to_pascal, snake_to_camel, copy_method_signature
+from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from ..crud.sqla import SQLACollection
 from ..crud.base import StateMachine, ExtensibleViewsApp, BaseCollection
 from ..crud.routes import register_collection
-from .dependencies import get_collection, Collection, Model
+from .dependencies import get_collection, Collection, Model, App
 from ..exc import AurelixException
 from ..settings import Settings
 from .. import schema
@@ -47,15 +47,6 @@ SA_TYPES={
     'datetime': sa.types.DateTime,
     'date': sa.types.Date,
 }
-
-class App(fastapi.FastAPI):
-
-    collection: dict[str, BaseCollection]
-
-    @copy_method_signature(fastapi.FastAPI.__init__)
-    def __init__(self, *args, **kwargs):
-        self.collection = {}
-        super().__init__(*args, **kwargs)
 
 
 def create_table(name, metadata, columns=None, indexes=None, constraints=None, *args):

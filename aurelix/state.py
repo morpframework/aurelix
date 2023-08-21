@@ -2,9 +2,15 @@ from . import schema
 import fastapi
 import typing
 import databases
+import sqlalchemy as sa
+
+class DatabaseState(typing.TypedDict):
+    engine: sa.engine.Engine
+    metadata: sa.MetaData
+    db: databases.Database
 
 class AppState(typing.TypedDict):
-    databases: dict[str, databases.Database]
+    databases: dict[str, DatabaseState]
     settings: schema.AppSpec
     oidc_settings: schema.OIDCConfiguration
     models: dict[str, schema.ModelSpec]

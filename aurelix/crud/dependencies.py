@@ -3,6 +3,7 @@ import typing
 from .. import exc
 from .. import schema
 from .base import BaseCollection
+from ..utils import copy_method_signature
 
 async def get_collection(request: fastapi.Request, name: str = None) -> BaseCollection:
     if name is None:
@@ -31,3 +32,17 @@ async def get_model(request: fastapi.Request, collection: Collection):
     return obj
 
 Model = typing.Annotated[schema.CoreModel, fastapi.Depends(get_model)]
+
+class AurelixApp(fastapi.FastAPI):
+
+    collection: dict[str, BaseCollection]
+
+    @copy_method_signature(fastapi.FastAPI.__init__)
+    def __init__(self, *args, **kwargs):
+        self.collection = {}
+        super().__init__(*args, **kwargs)
+
+async def get_app(request: fastapi.Request):
+    return request.app
+
+App = typing.Annotated[AurelixApp, fastapi.Depends(get_app)]
