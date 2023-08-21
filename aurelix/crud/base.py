@@ -180,8 +180,10 @@ class BaseCollection(ExtensibleViewsApp):
             result[v].append(k)
         return result
  
-
-    async def transform_output_data(self, item: pydantic.BaseModel):
+    def _transform_output_data(self, item: dict) -> dict:
+        return item
+    
+    async def transform_output_data(self, item: pydantic.BaseModel) -> dict:
         field_permissions = await self.get_field_permissions()
 
         # delete protected fields
@@ -193,14 +195,15 @@ class BaseCollection(ExtensibleViewsApp):
         data = item.model_dump()
         for k in protected_fields:
             if k in data: del data[k]
- 
-        return data
 
-    async def _transform_create_data(self, item):
-        return item.model_dump()
+        return self._transform_output_data(data)
+
+    async def _transform_create_data(self, item: dict) -> dict:
+        return item
     
-    async def transform_create_data(self, item):
-        data = await self._transform_create_data(item)
+    async def transform_create_data(self, item: pydantic.BaseModel) -> dict:
+        data = item.model_dump()
+        data = await self._transform_create_data(data)
         field_permissions = await self.get_field_permissions()
 
         # delete protected fields
@@ -221,11 +224,12 @@ class BaseCollection(ExtensibleViewsApp):
         data['dateModified'] = datetime.datetime.utcnow()
         return data
 
-    async def _transform_update_data(self, item):
-        return item.model_dump()
+    async def _transform_update_data(self, item: dict) -> dict:
+        return item
     
-    async def transform_update_data(self, item):
-        data = await self._transform_update_data(item)
+    async def transform_update_data(self, item: pydantic.BaseModel) -> dict:
+        data = item.model_dump()
+        data = await self._transform_update_data(data)
         field_permissions = await self.get_field_permissions()
 
         # delete protected fields

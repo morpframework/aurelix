@@ -14,7 +14,7 @@ def snake_to_human(snake):
     return ' '.join([k.capitalize() for k in snake.split('_')])
 
 def snake_to_camel(snake):
-    return ''.join([k.capitalize() for k in snake.split('_')])
+    return ''.join([k if i == 0 else k.capitalize() for i,k in enumerate(snake.split('_'))])
 
 async def item_json(col, item: pydantic.BaseModel):
     return {

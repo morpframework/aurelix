@@ -3,7 +3,9 @@
 ## 0.1.2 (unreleased)
 
 
-- Nothing changed yet.
+- fixed after/before create/update/delete event hooks not triggering
+- fixed transform create/update/output transform hooks not overriding correctly
+- event hooks and transform hooks are now multi-item and chainable
 
 
 ## 0.1.1 (2023-08-21)

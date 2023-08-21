@@ -227,10 +227,47 @@ def generate_statemachine(spec: schema.ModelSpec, name: str = 'StateMachine'):
         for m in ['on_enter', 'on_exit']:
             coderef = getattr(m, snake_to_camel(m), None)
             if coderef:
-                impl = load_code_ref(coderef)
+                impl = load_multi_code_ref(coderef)
                 if impl:
                     attrs[m + '_' + s.value] = impl
     return type(name, (StateMachine, ), attrs)
+
+def load_multi_code_ref(coderefs: list[schema.CodeRefSpec] | schema.CodeRefSpec, package=None):
+    impls = []
+    if type(coderefs) != list:
+        coderefs = [coderefs]
+    for coderef in coderefs:
+        impl = load_code_ref(coderef, package)
+        if impl:
+            impls.append(impl)
+    if impls:
+        async def wrapper(*args, **kwargs):
+            for i in impls:
+                if inspect.iscoroutinefunction(impl):
+                    await impl(*args, **kwargs) # type: ignore 
+                else:
+                    impl(*args, **kwargs)
+        return wrapper
+    return None
+
+def load_transform_code_ref(coderefs: list[schema.CodeRefSpec] | schema.CodeRefSpec, package=None):
+    impls = []
+    if type(coderefs) != list:
+        coderefs = [coderefs]
+    for coderef in coderefs:
+        impl = load_code_ref(coderef, package)
+        if impl:
+            impls.append(impl)
+    if impls:
+        async def wrapper(self, obj: dict) -> dict:
+            for i in impls:
+                if inspect.iscoroutinefunction(impl):
+                    obj = await impl(self, obj) # type: ignore 
+                else:
+                    obj = impl(self, obj)
+            return obj
+        return wrapper
+    return None
 
 def load_code_ref(spec: schema.CodeRefSpec, package=None):
     if spec.function and spec.code:
@@ -271,16 +308,23 @@ def generate_sqlalchemy_collection(app: App,
         'defaultFieldPermission': spec.defaultFieldPermission,
         '__init__': constructor       
     }
-    for m in ['transform_create_data', 'transform_update_data', 
-              'before_create', 'after_create', 
+    for m in ['before_create', 'after_create', 
               'before_update', 'after_update', 
               'before_delete', 'after_delete']:
         
         coderef = getattr(spec, snake_to_camel(m), None)
         if coderef:
-            impl = load_code_ref(coderef)
+            impl = load_multi_code_ref(coderef)
             if impl:
                 attrs[m] = impl
+
+    for m in ['transform_create_data', 'transform_update_data',
+              'transform_output_data']:
+        coderef = getattr(spec, snake_to_camel(m), None)
+        if coderef:
+            impl = load_transform_code_ref(coderef)
+            if impl:
+                attrs['_' + m] = impl
     async def _get_collection(request: fastapi.Request):
         return await get_collection(request)
     

@@ -107,15 +107,15 @@ class ModelSpec(pydantic.BaseModel):
     views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec)
     tags: list[str] | None = pydantic.Field(default_factory=list)
     stateMachine: StateMachineSpec | None = None 
-    beforeCreate: CodeRefSpec | None = None
-    afterCreate: CodeRefSpec | None = None
-    beforeUpdate: CodeRefSpec | None = None
-    afterUpdate: CodeRefSpec | None = None 
-    beforeDelete: CodeRefSpec | None = None
-    afterDelete: CodeRefSpec | None = None
-    transformCreateData: CodeRefSpec | None = None 
-    transformUpdateData: CodeRefSpec | None = None 
-    transformOutputData: CodeRefSpec | None = None
+    beforeCreate: list[CodeRefSpec] | None = None
+    afterCreate:  list[CodeRefSpec] | None = None
+    beforeUpdate: list[CodeRefSpec] | None = None
+    afterUpdate: list[CodeRefSpec] | None = None 
+    beforeDelete: list[CodeRefSpec] | None = None
+    afterDelete: list[CodeRefSpec] | None = None
+    transformCreateData: list[CodeRefSpec] | None = None 
+    transformUpdateData: list[CodeRefSpec] | None = None 
+    transformOutputData: list[CodeRefSpec] | None = None
     permissionFilters: list[PermissionFilterSpec] | None = None
     maxPageSize: int = 100
 
