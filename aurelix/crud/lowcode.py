@@ -90,12 +90,13 @@ async def load_app(path: str):
 
     spec_dir = os.path.dirname(path)
     init_oauth = {}
-    if spec.swagger_ui_init_oauth.client_id:
-        init_oauth['clientId'] = spec.swagger_ui_init_oauth.client_id
-    if spec.swagger_ui_init_oauth.client_secret:
-        init_oauth['clientSecret'] = spec.swagger_ui_init_oauth.client_secret
-    if init_oauth.keys() and spec.title:
-        init_oauth['appName'] = spec.title
+    if spec.swagger_ui_init_oauth:
+        if spec.swagger_ui_init_oauth.client_id:
+            init_oauth['clientId'] = spec.swagger_ui_init_oauth.client_id
+        if spec.swagger_ui_init_oauth.client_secret:
+            init_oauth['clientSecret'] = spec.swagger_ui_init_oauth.client_secret
+        if init_oauth.keys() and spec.title:
+            init_oauth['appName'] = spec.title
 
     app = App(debug=spec.debug, title=spec.title, summary=spec.summary, version=spec.version,
                           docs_url=spec.docs_url, redoc_url=spec.redoc_url, 

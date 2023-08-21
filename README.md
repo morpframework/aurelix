@@ -2,8 +2,6 @@
 
 ## Installing
 
-### Using pip
-
 Install full server
 
 ```console
@@ -16,18 +14,25 @@ Only install for client library use
 $ pip install aurelix
 ```
 
-### Using docker
+## Initializing application
 
-Pull docker image
+To initialize and application, you can run
 
+```console
+$ aurelix init myproject
 ```
-$ docker pull docker.io/kagesenshi/aurelix:latest
+
+And start it using
+
+```console
+$ aurelix run -c myproject/app.yaml
 ```
 
-## Starting your first model
+## Example app
 
-Create a directory with following structure
+This example shows a bit more of Aurelix capabilities. Detailed documentation is still WIP.
 
+Project directory of this sample app looks like this:
 ```
 myproject/
 `- app.yaml
@@ -37,7 +42,7 @@ myproject/
  `- myviews.py
 ```
 
-Set following contents in `app.yaml`:
+Contents of `app.yaml`:
 
 ```yaml
 title: MyApp
@@ -46,7 +51,7 @@ databases:
     url: sqlite:///./database.sqlite
 ```
 
-Set following contents in `myviews.py`:
+Contents of `libs/myviews.py`. Aurelix config can load views and modules from `libs/` directory:
 
 ```python
 from fastapi import Request
@@ -57,7 +62,7 @@ async def myview(request: Request):
     }
 ```
 
-Set following contents in `mymodel.yaml`:
+Contents of `models/mymodel.yaml`. Automated API creation from model is where the bulk of Aurelix features are:
 
 
 ```yaml
@@ -123,19 +128,19 @@ tags:
   - custom tag
 ```
 
-## Start up the service:
+### Start up the service:
 
-### Using docker
+#### Using docker
 
 ```console
 $ docker run -v /path/to/myproject:/opt/app -p 8000:8000 -ti --rm docker.io/kagesenshi/aurelix:latest
 ```
 
-### Using `aurelix` command
+#### Using `aurelix` command
 
 ```console
 $ export AURELIX_CONFIG='/path/to/myproject/app.yaml'
-$ aurelix -l 0.0.0.0
+$ aurelix run -l 0.0.0.0
 ```
 
 ## Configuration Spec

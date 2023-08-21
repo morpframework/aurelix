@@ -52,7 +52,7 @@ class CodeRefSpec(pydantic.BaseModel):
 class ExtensionViewSpec(pydantic.BaseModel):
     method: RequestMethod = 'GET'
     summary: str | None = None
-    tags: list[str] | None = None
+    tags: list[str] | None = pydantic.Field(default_factory=list)
     openapi_extra: dict[str, typing.Any] | None = None
     handler: CodeRefSpec
 
@@ -91,7 +91,7 @@ class FieldPermission(enum.StrEnum):
 class PermissionFilterSpec(pydantic.BaseModel):
     identities: list[str]
     whereFilter: str | None = None
-    defaultFieldPermission: FieldPermission = FieldPermission.readWrite # default permission to apply on fields
+    defaultFieldPermission: FieldPermission = str(FieldPermission.readWrite) # default permission to apply on fields
 
     # field may appear in many list, the most restrictive wins
     readWriteFields: list[str] | None = None # fields listed here are readwrite
@@ -103,9 +103,9 @@ class ModelSpec(pydantic.BaseModel):
     name: str
     storageType: StorageTypeSpec
     fields: dict[str, FieldSpec]
-    defaultFieldPermission: FieldPermission = FieldPermission.readWrite
+    defaultFieldPermission: FieldPermission = str(FieldPermission.readWrite)
     views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec)
-    tags: list[str]
+    tags: list[str] | None = pydantic.Field(default_factory=list)
     stateMachine: StateMachineSpec | None = None 
     beforeCreate: CodeRefSpec | None = None
     afterCreate: CodeRefSpec | None = None

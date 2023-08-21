@@ -18,4 +18,4 @@ RUN python3.11 -m venv /opt/virtualenv && \
 
 ENV AURELIX_CONFIG=/opt/app/app.yaml
 
-ENTRYPOINT ["/opt/virtualenv/bin/aurelix", "-l", "0.0.0.0"]
+ENTRYPOINT ["/opt/virtualenv/bin/aurelix", "run", "-l", "0.0.0.0"]

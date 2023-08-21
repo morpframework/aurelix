@@ -5,6 +5,8 @@
 - added field level permission filter
 - added encrypted-string field
 - exclude null from response objects
+- fixed startup issue when `swagger_ui_init_oauth` not configured
+- added cli to initialize project
 
 ## 0.1 (2023-08-21)
 
