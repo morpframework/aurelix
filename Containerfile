@@ -14,7 +14,7 @@ ADD MANIFEST.in /opt/aurelix/
 ADD aurelix /opt/aurelix/aurelix
 
 RUN python3.11 -m venv /opt/virtualenv && \
-    /opt/virtualenv/bin/pip install -e /opt/aurelix
+    /opt/virtualenv/bin/pip install -e /opt/aurelix[all]
 
 ENV AURELIX_CONFIG=/opt/app/app.yaml
 

@@ -3,11 +3,30 @@ import sys, os
 
 version = '0.1'
 
+SERVER_REQUIRES=[
+    'dectate',
+    'fastapi[all]',
+    'uvicorn[standard]',
+    'pydantic',
+    'sqlalchemy',
+    'databases[aiopg,aiomysql,aiosqlite]',
+    'aiosqlite',
+    'aiopg',
+    'aiomysql',
+    'pydantic-settings',
+    'transitions',
+    'python-multipart',
+    'aiohttp',   
+]
+
+CLIENT_REQUIRES=[
+    'requests'
+]
+
 setup(name='aurelix',
       version=version,
       description="Low code API framework based on Dectate and FastAPI",
-      long_description="""\
-""",
+      long_description="""\n""",
       classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
       keywords='',
       author='Izhar Firdaus',
@@ -17,25 +36,14 @@ setup(name='aurelix',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      install_requires=[
-          # -*- Extra requirements: -*-
-          'dectate',
-          'fastapi[all]',
-          'uvicorn[standard]',
-          'pydantic',
-          'sqlalchemy',
-          'databases[aiopg,aiomysql,aiosqlite]',
-          'aiosqlite',
-          'aiopg',
-          'aiomysql',
-          'pydantic-settings',
-          'transitions',
-          'python-multipart',
-          'aiohttp',
-      ],
+      install_requires=CLIENT_REQUIRES,
+      extras_require={
+            'server': SERVER_REQUIRES,
+            'all': CLIENT_REQUIRES + SERVER_REQUIRES
+      },
       entry_points={
           'console_scripts': [
               'aurelix=aurelix.cli:main'
           ]
-      }
-      )
+      },
+)
