@@ -267,6 +267,7 @@ def generate_sqlalchemy_collection(app: App,
         'name': spec.name,
         'Schema': schema,
         'permissionFilters': spec.permissionFilters,
+        'defaultFieldPermission': spec.defaultFieldPermission,
         '__init__': constructor       
     }
     for m in ['transform_create_data', 'transform_update_data', 

@@ -92,6 +92,8 @@ async def get_userinfo(request: fastapi.Request) -> schema.OIDCUserInfo:
 
 async def get_permission_identities(request: fastapi.Request) -> list[str]:
     userinfo = await get_userinfo(request)
+    if userinfo is None:
+        return []
     res = []
     if userinfo.sub:
         res.append('sub:%s' % userinfo.sub)

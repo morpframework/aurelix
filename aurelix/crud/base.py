@@ -5,7 +5,8 @@ import pydantic
 import fastapi
 import datetime
 from .. import exc
-from ..dependencies import get_userinfo
+from .. import schema
+from ..dependencies import get_userinfo, get_permission_identities
 import typing
 
 class StateMachine(object):
@@ -70,6 +71,8 @@ class BaseCollection(ExtensibleViewsApp):
     name: str
     Schema: type[pydantic.BaseModel]
     StateMachine: type[StateMachine]
+    permissionFilters: list[schema.PermissionFilterSpec]
+    defaultFieldPermission: schema.FieldPermission
 
     @validate_types
     def __init__(self, request: fastapi.Request):
@@ -121,16 +124,93 @@ class BaseCollection(ExtensibleViewsApp):
     async def delete(self, name: str):
         raise NotImplementedError
 
-    async def transform_output_data(self, item):
-        return item
+    async def get_permission_filters(self) -> list[str]:
+        if not self.permissionFilters:
+            return []
+        
+        identities = await get_permission_identities(self.request)
+        has_filter = False
+        for f in self.permissionFilters:
+            if not f.whereFilter:
+                continue
+            has_filter = True
+            if '*' in f.identities:
+                return [f.whereFilter]
+            for i in identities:
+                if i in f.identities:
+                    return [f.whereFilter]
+        
+        # reject everything by default
+        if has_filter:
+            return ['1=0']
+        return []
+    
+    async def get_field_permissions(self) -> dict[schema.FieldPermission, list[str]]:
+        result: dict[schema.FieldPermission, list[str]] = {
+            schema.FieldPermission.readOnly: [],
+            schema.FieldPermission.readWrite: [],
+            schema.FieldPermission.restricted: []
+        }
+        if not self.permissionFilters:
+            return result
+        
+        identities = await get_permission_identities(self.request)
+        perms = {}
+        fields = self.Schema.model_fields.keys()
+        for k in fields:
+            perms[k] = self.defaultFieldPermission
+        for f in self.permissionFilters:
+            apply_filter = False
+            if '*' in f.identities:
+                apply_filter = True
+            for i in identities:
+                if i in f.identities:
+                    apply_filter = True
+            if apply_filter:
+                for k in fields:
+                    perms[k] = f.defaultFieldPermission
+                    if k in (f.readWriteFields or []):
+                        perms[k] = schema.FieldPermission.readWrite
+                    if k in (f.readOnlyFields or []):
+                        perms[k] = schema.FieldPermission.readOnly
+                    if k in (f.restrictedFields or []):
+                        perms[k] = schema.FieldPermission.restricted
+
+        for k,v in perms.items():
+            result[v].append(k)
+        return result
+ 
+
+    async def transform_output_data(self, item: pydantic.BaseModel):
+        field_permissions = await self.get_field_permissions()
+
+        # delete protected fields
+        protected_fields = (
+            field_permissions[schema.FieldPermission.readOnly] + 
+            field_permissions[schema.FieldPermission.restricted]
+        )
+
+        data = item.model_dump()
+        for k in protected_fields:
+            if k in data: del data[k]
+ 
+        return data
 
     async def _transform_create_data(self, item):
         return item.model_dump()
     
     async def transform_create_data(self, item):
         data = await self._transform_create_data(item)
+        field_permissions = await self.get_field_permissions()
+
         # delete protected fields
-        for k in ['id']:
+        protected_fields = (
+            field_permissions[schema.FieldPermission.readOnly] + 
+            field_permissions[schema.FieldPermission.restricted] + 
+            ['id']
+        )
+
+        for k in protected_fields:
             if k in data: del data[k]
         userinfo = await get_userinfo(self.request)
         creator = None
@@ -146,9 +226,18 @@ class BaseCollection(ExtensibleViewsApp):
     
     async def transform_update_data(self, item):
         data = await self._transform_update_data(item)
+        field_permissions = await self.get_field_permissions()
+
         # delete protected fields
-        for k in ['id']:
+        protected_fields = (
+            field_permissions[schema.FieldPermission.readOnly] + 
+            field_permissions[schema.FieldPermission.restricted] + 
+            ['id']
+        )
+
+        for k in protected_fields:
             if k in data: del data[k]
+
         userinfo = await get_userinfo(self.request)
         editor = None
         if userinfo:

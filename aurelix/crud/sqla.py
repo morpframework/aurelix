@@ -22,6 +22,7 @@ class SQLACollection(BaseCollection):
     name: str
     Schema: type[pydantic.BaseModel]
     permissionFilters: list[schema.PermissionFilterSpec]
+    defaultFieldPermission: schema.FieldPermission
 
     @validate_types
     def __init__(self, request: fastapi.Request, 
@@ -55,6 +56,7 @@ class SQLACollection(BaseCollection):
         filters = []
         if secure:
             filters = await self.get_permission_filters()
+            filters = [sa.text(f) for f in filters]
 
         filters.append(getattr(self.table.c, field)==value)
         query = self.table.select().where(sa.and_(*filters))
@@ -82,20 +84,6 @@ class SQLACollection(BaseCollection):
             return None
         return await self.get_by_id(int(identifier), secure)
 
-    async def get_permission_filters(self) -> list[sa.text]:
-        if not self.permissionFilters:
-            return []
-        
-        identities = await get_permission_identities(self.request)
-        for f in self.permissionFilters:
-            if '*' in f.identities:
-                return [sa.text(f.whereFilter)]
-            for i in identities:
-                if i in f.identities:
-                    return [sa.text(f.whereFilter)]
-        
-        # reject everything by default
-        return [sa.text('1=0')]
     
     @validate_types
     async def search(self, query: str | None, offset: int = 0, limit: int | None = None, 
@@ -105,6 +93,7 @@ class SQLACollection(BaseCollection):
         filters = []
         if secure:
             filters = await self.get_permission_filters()
+            filters = [sa.text(f) for f in filters]
         if query: 
             filters.append(sa.text(query))
         if filters:
@@ -138,6 +127,7 @@ class SQLACollection(BaseCollection):
         filters  = []
         if secure:
             filters = await self.get_permission_filters()
+            filters = [sa.text(f) for f in filters]
 
         if query: 
             filters.append(sa.text(query))
@@ -155,6 +145,7 @@ class SQLACollection(BaseCollection):
         filters = []
         if secure:
             filters = await self.get_permission_filters()
+            filters = [sa.text(f) for f in filters]
 
         filters.append(getattr(self.table.c, field)==value)
         async with self.db.transaction() as txn:
@@ -189,6 +180,7 @@ class SQLACollection(BaseCollection):
         filters = []
         if secure:
             filters = await self.get_permission_filters()
+            filters = [sa.text(f) for f in filters]
         filters.append(getattr(self.table.c, field)==value)
         query = self.table.delete().where(sa.and_(*filters))
         await self.db.execute(query)

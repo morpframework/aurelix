@@ -55,7 +55,9 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
     )
 
     if listing_enabled:
-        @Collection.view('/', method='GET', openapi_extra=openapi_extra, summary='List %s' % snake_to_human(collection_name))
+        @Collection.view('/', method='GET', openapi_extra=openapi_extra, 
+                         summary='List %s' % snake_to_human(collection_name),
+                         response_model_exclude_none=True)
         async def listing(request: Request, userinfo: UserInfo, query: str | None = None, 
                           page: int = 0, page_size: int = 10, order_by: str | None = None) -> ModelSearchResult:
             if page_size > max_page_size:
@@ -93,13 +95,16 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
 
     if create_enabled:
         @Collection.view('/', method='POST', openapi_extra=openapi_extra, summary='Create new %s' % snake_to_human(collection_name))
-        async def create(request: Request, userinfo: UserInfo, item: ModelInput) -> ModelResult:
+        async def create(request: Request, userinfo: UserInfo, item: ModelInput, 
+                        response_model_exclude_none=True) -> ModelResult:
             col = Collection(request)
             item = await col.create(item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
 
     if read_enabled:
-        @Collection.view('/{identifier}', method='GET', openapi_extra=openapi_extra, summary='Get %s' % snake_to_human(collection_name))
+        @Collection.view('/{identifier}', method='GET', openapi_extra=openapi_extra, 
+                         summary='Get %s' % snake_to_human(collection_name),
+                         response_model_exclude_none=True)
         async def read(request: Request, userinfo: UserInfo, col: Collection, model: Model, identifier: str) -> ModelResult:
             return ModelResult.model_validate({
                 'data': await item_json(col, model)
@@ -110,7 +115,9 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         
         patch_example = json.dumps(ModelPatchInput().model_dump())
         
-        @Collection.view('/{identifier}', method='PATCH', openapi_extra=openapi_extra, summary='Update %s' % snake_to_human(collection_name))
+        @Collection.view('/{identifier}', method='PATCH', openapi_extra=openapi_extra, 
+                         summary='Update %s' % snake_to_human(collection_name),
+                         response_model_exclude_none=True)
         async def update_patch(request: Request, userinfo: UserInfo, identifier: str, col:Collection, 
                                patch: typing.Annotated[dict[str, typing.Any | None], Body(example=patch_example)]) -> ModelResult:
             try:
@@ -125,7 +132,9 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
         
-        @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, summary='Update %s (Full)' % snake_to_human(collection_name))
+        @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, 
+                         summary='Update %s (Full)' % snake_to_human(collection_name),
+                         response_model_exclude_none=True)
         async def update(request: Request, userinfo: UserInfo, identifier: str, col:Collection, item: ModelInput) -> ModelResult:
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})

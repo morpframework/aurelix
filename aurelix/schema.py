@@ -83,15 +83,27 @@ class StateMachineSpec(pydantic.BaseModel):
     states: list[StateMachineStateSpec] 
     transitions: list[StateMachineTransitionSpec]
 
+class FieldPermission(enum.StrEnum):
+    readOnly: str = "readOnly"
+    readWrite: str = "readWrite"
+    restricted: str = "restricted"
+
 class PermissionFilterSpec(pydantic.BaseModel):
     identities: list[str]
-    whereFilter: str
+    whereFilter: str | None = None
+    defaultFieldPermission: FieldPermission = FieldPermission.readWrite # default permission to apply on fields
+
+    # field may appear in many list, the most restrictive wins
+    readWriteFields: list[str] | None = None # fields listed here are readwrite
+    readOnlyFields: list[str] | None = None # fields listed here are readonly
+    restrictedFields: list[str] | None = None # fields listed here are hidden
 
 class ModelSpec(pydantic.BaseModel):
 
     name: str
     storageType: StorageTypeSpec
     fields: dict[str, FieldSpec]
+    defaultFieldPermission: FieldPermission = FieldPermission.readWrite
     views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec)
     tags: list[str]
     stateMachine: StateMachineSpec | None = None 
