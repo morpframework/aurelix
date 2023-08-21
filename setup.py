@@ -9,6 +9,7 @@ SERVER_REQUIRES=[
     'uvicorn[standard]',
     'pydantic',
     'sqlalchemy',
+    'sqlalchemy_utils',
     'databases[aiopg,aiomysql,aiosqlite]',
     'aiosqlite',
     'aiopg',
@@ -16,7 +17,8 @@ SERVER_REQUIRES=[
     'pydantic-settings',
     'transitions',
     'python-multipart',
-    'aiohttp',   
+    'aiohttp',
+    'cryptography',
 ]
 
 CLIENT_REQUIRES=[

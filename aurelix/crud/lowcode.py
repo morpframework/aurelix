@@ -7,12 +7,13 @@ import os
 import sys
 import yaml
 import sqlalchemy as sa
+import sqlalchemy_utils as sautils
 import pydantic
 import importlib
 from ..utils import validate_types, snake_to_pascal, snake_to_camel
-from ..crud.sqla import SQLACollection
-from ..crud.base import StateMachine, ExtensibleViewsApp, BaseCollection
-from ..crud.routes import register_collection
+from .sqla import SQLACollection, EncryptedString
+from .base import StateMachine, ExtensibleViewsApp, BaseCollection
+from .routes import register_collection
 from .dependencies import get_collection, Collection, Model, App
 from ..dependencies import UserInfo
 from ..exc import AurelixException
@@ -37,6 +38,7 @@ PY_TYPES = {
     'float': float,
     'datetime': datetime.datetime,
     'date': datetime.date,
+    'encrypted-string': str
 }
 
 SA_TYPES={
@@ -47,6 +49,7 @@ SA_TYPES={
     'float': sa.Float,
     'datetime': sa.types.DateTime,
     'date': sa.types.Date,
+    'encrypted-string': EncryptedString
 }
 
 

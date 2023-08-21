@@ -1,5 +1,6 @@
 import databases
 import sqlalchemy as sa
+import sqlalchemy_utils as sautils
 import fastapi
 import pydantic
 import datetime
@@ -206,3 +207,24 @@ class SQLACollection(BaseCollection):
         except ValueError:
             return None
         return await self.delete_by_id(int(identifier), secure)
+
+from sqlalchemy_utils.types.encrypted import encrypted_type
+
+def EncryptedString(*args, **kwargs):
+    engine_name = kwargs['engine'].lower()
+    opts = {}
+
+    if engine_name == 'fernet':
+        opts['engine'] = encrypted_type.FernetEngine
+    elif engine_name == 'aes':
+        opts['engine'] = encrypted_type.AesEngine
+    elif engine_name == 'aes-gcm':
+        opts['engine'] = encrypted_type.AesGcmEngine
+    else:
+        raise exc.AurelixException("Unknown encryption engine %s" % engine_name)
+    
+    if not kwargs['key']:
+        raise exc.AurelixException("Encryption key not provided")
+    opts['key'] = kwargs['key']
+
+    return sautils.types.StringEncryptedType(sa.String(*args), **opts)
