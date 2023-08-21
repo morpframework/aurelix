@@ -5,32 +5,40 @@ Aurelix: Low Code API Framework Based on FastAPI, Dectate and SQLAlchemy
 Starting your first model
 --------------------------
 
-Create a directory with following structure::
+Create a directory with following structure
 
+```
     - app.yaml
     - models/
     `- mymodel.yaml
     - libs/
     `- myviews.py
+```
 
-Set following contents in ``app.yaml``::
+Set following contents in `app.yaml`::
 
+```yaml
     title: MyApp
     databases:
     - name: default
       url: sqlite:///./database.sqlite
+```
 
-Set following contents in ``myviews.py``::
+Set following contents in `myviews.py`::
 
+```python
     from fastapi import Request
 
     async def myview(request: Request):
         return {
            'hello': 'world'
         }
+```
 
-Set following contents in ``mymodel.yaml``::
+Set following contents in `mymodel.yaml`::
 
+
+```yaml
     name: mymodel
     storageType:
       name: sqlalchemy
@@ -91,11 +99,14 @@ Set following contents in ``mymodel.yaml``::
           dest: failed
     tags:
       - custom tag
+```
 
-Start up the service::
+Start up the service
 
+```console
   $ podman run -v .:/opt/app -p 8000:8000 -ti --rm docker.io/kagesenshi/aurelix:latest
+```
 
-For more details about ``app.yaml`` spec, checkout pydantic class ``aurelix.crud.lowcode:AppSpec``.
+For more details about `app.yaml` spec, checkout pydantic class `aurelix.crud.lowcode:AppSpec`.
 
-For more details about model spec for ``mymodel.yaml``, check out the Pydantic model in ``aurelix.crud.lowcode:ModelSpec``
+For more details about model spec for `mymodel.yaml`, check out the Pydantic model in `aurelix.crud.lowcode:ModelSpec`
