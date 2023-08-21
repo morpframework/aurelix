@@ -180,7 +180,7 @@ class BaseCollection(ExtensibleViewsApp):
             result[v].append(k)
         return result
  
-    def _transform_output_data(self, item: dict) -> dict:
+    async def _transform_output_data(self, item: dict) -> dict:
         return item
     
     async def transform_output_data(self, item: pydantic.BaseModel) -> dict:
@@ -196,7 +196,7 @@ class BaseCollection(ExtensibleViewsApp):
         for k in protected_fields:
             if k in data: del data[k]
 
-        return self._transform_output_data(data)
+        return await self._transform_output_data(data)
 
     async def _transform_create_data(self, item: dict) -> dict:
         return item
