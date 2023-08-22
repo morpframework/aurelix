@@ -18,6 +18,10 @@ class EnumSpec(pydantic.BaseModel):
     value: str
     label: str
 
+class CodeRefSpec(pydantic.BaseModel):
+    function: str | None = None
+    code: str | None = None
+
 class FieldTypeSpec(pydantic.BaseModel):
     type: str
     size: int | None = None
@@ -33,6 +37,11 @@ class FieldSpec(pydantic.BaseModel):
     indexed: bool = False
     unique: bool = False
     foreignKey: str | None = None
+    validators: list[CodeRefSpec] | None = None
+
+class ModelValidators(pydantic.BaseModel):
+    model: typing.Callable | None
+    fields: dict[str, typing.Callable | None]
 
 class ViewSpec(pydantic.BaseModel):
     enabled: bool = True
@@ -45,9 +54,6 @@ class RequestMethod(enum.StrEnum):
     DELETE = 'DELETE'
     OPTIONS = 'OPTIONS'
 
-class CodeRefSpec(pydantic.BaseModel):
-    function: str | None = None
-    code: str | None = None
 
 class ExtensionViewSpec(pydantic.BaseModel):
     method: RequestMethod = 'GET'
@@ -117,6 +123,7 @@ class ModelSpec(pydantic.BaseModel):
     transformUpdateData: list[CodeRefSpec] | None = None 
     transformOutputData: list[CodeRefSpec] | None = None
     permissionFilters: list[PermissionFilterSpec] | None = None
+    validators: list[CodeRefSpec] | None = None
     maxPageSize: int = 100
 
 class DatabaseSpec(pydantic.BaseModel):

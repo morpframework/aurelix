@@ -192,6 +192,17 @@ def load_model_spec(app: App, path: str):
             spec, Schema, table, 
             name=snake_to_pascal(spec.name))
         result['collection'] = Collection
+    else:
+        raise exc.AurelixException("Unknown model type %s" % model_type)
+    validators = {'model': None, 'fields': {}}
+    if spec.validators:
+        impl = load_multi_code_ref(spec.validators)
+        validators['model'] = impl
+    for field_name, field in spec.fields.items():
+        if field.validators:
+            impl = load_multi_code_ref(field.validators)
+            validators['fields'][field_name] = impl
+    Collection.validators = schema.ModelValidators.model_validate(validators)
     if spec.stateMachine:
         state_machine = generate_statemachine(spec, name=snake_to_pascal(spec.name))
         Collection.StateMachine = state_machine

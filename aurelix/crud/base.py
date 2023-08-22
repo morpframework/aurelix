@@ -73,6 +73,7 @@ class BaseCollection(ExtensibleViewsApp):
     StateMachine: type[StateMachine]
     permissionFilters: list[schema.PermissionFilterSpec]
     defaultFieldPermission: schema.FieldPermission
+    validators: schema.ModelValidators
 
     @validate_types
     def __init__(self, request: fastapi.Request):
@@ -201,8 +202,17 @@ class BaseCollection(ExtensibleViewsApp):
     async def _transform_create_data(self, item: dict) -> dict:
         return item
     
+    async def apply_validators(self, data: dict):
+        data = data.copy()
+        if self.validators.fields:
+            for fname, fvalidator in self.validators.fields.items():
+                await fvalidator(self.request, self, data, data[fname])
+        if self.validators.model:
+            await self.validators.model(self.request, self, data)
+    
     async def transform_create_data(self, item: pydantic.BaseModel) -> dict:
         data = item.model_dump()
+        await self.apply_validators(data)
         data = await self._transform_create_data(data)
         field_permissions = await self.get_field_permissions()
 
@@ -229,6 +239,7 @@ class BaseCollection(ExtensibleViewsApp):
     
     async def transform_update_data(self, item: pydantic.BaseModel) -> dict:
         data = item.model_dump()
+        await self.apply_validators(data)
         data = await self._transform_update_data(data)
         field_permissions = await self.get_field_permissions()
 
