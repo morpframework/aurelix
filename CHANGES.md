@@ -4,6 +4,7 @@
 
 - Added hooks for field and model validation
 - allow specifying function name in CodeRefSpec
+- added field input/output transfomer hooks
 
 ## 0.1.2.beta1 (2023-08-22)
 

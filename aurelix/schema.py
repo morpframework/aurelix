@@ -39,10 +39,9 @@ class FieldSpec(pydantic.BaseModel):
     unique: bool = False
     foreignKey: str | None = None
     validators: list[CodeRefSpec] | None = None
+    inputTransformers: list[CodeRefSpec] | None = None
+    outputTransformers: list[CodeRefSpec] | None = None
 
-class ModelValidators(pydantic.BaseModel):
-    model: typing.Callable | None
-    fields: dict[str, typing.Callable | None]
 
 class ViewSpec(pydantic.BaseModel):
     enabled: bool = True

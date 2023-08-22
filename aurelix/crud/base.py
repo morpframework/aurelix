@@ -9,6 +9,15 @@ from .. import schema
 from ..dependencies import get_userinfo, get_permission_identities
 import typing
 
+class ModelValidators(pydantic.BaseModel):
+    model: typing.Callable | None
+    fields: dict[str, typing.Callable]
+
+class ModelFieldTransformers(pydantic.BaseModel):
+    inputTransformers: dict[str, typing.Callable]
+    outputTransformers: dict[str, typing.Callable]
+
+
 class StateMachine(object):
 
     field: str
@@ -73,7 +82,8 @@ class BaseCollection(ExtensibleViewsApp):
     StateMachine: type[StateMachine]
     permissionFilters: list[schema.PermissionFilterSpec]
     defaultFieldPermission: schema.FieldPermission
-    validators: schema.ModelValidators
+    validators: ModelValidators
+    fieldTransformers: ModelFieldTransformers
 
     @validate_types
     def __init__(self, request: fastapi.Request):
@@ -185,6 +195,7 @@ class BaseCollection(ExtensibleViewsApp):
         return item
     
     async def transform_output_data(self, item: pydantic.BaseModel) -> dict:
+
         field_permissions = await self.get_field_permissions()
 
         # delete protected fields
@@ -194,6 +205,7 @@ class BaseCollection(ExtensibleViewsApp):
         )
 
         data = item.model_dump()
+        data = await self.apply_field_output_transformers(data)
         for k in protected_fields:
             if k in data: del data[k]
 
@@ -206,13 +218,28 @@ class BaseCollection(ExtensibleViewsApp):
         data = data.copy()
         if self.validators.fields:
             for fname, fvalidator in self.validators.fields.items():
-                await fvalidator(self.request, self, data, data[fname])
+                await fvalidator(self, data, data[fname])
         if self.validators.model:
-            await self.validators.model(self.request, self, data)
-    
+            await self.validators.model(self, data)
+
+    async def apply_field_input_transformers(self, data: dict):
+        data = data.copy()
+        if self.fieldTransformers.inputTransformers:
+            for field, transform in self.fieldTransformers.inputTransformers.items():
+                data[field] = await transform(self, data[field], data)
+        return data
+
+    async def apply_field_output_transformers(self, data: dict):
+        data = data.copy()
+        if self.fieldTransformers.outputTransformers:
+            for field, transform in self.fieldTransformers.outputTransformers.items():
+                data[field] = await transform(self, data[field], data)
+        return data
+
     async def transform_create_data(self, item: pydantic.BaseModel) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
+        data = await self.apply_field_input_transformers(data)
         data = await self._transform_create_data(data)
         field_permissions = await self.get_field_permissions()
 
@@ -240,6 +267,7 @@ class BaseCollection(ExtensibleViewsApp):
     async def transform_update_data(self, item: pydantic.BaseModel) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
+        data = await self.apply_field_input_transformers(data)
         data = await self._transform_update_data(data)
         field_permissions = await self.get_field_permissions()
 

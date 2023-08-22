@@ -29,6 +29,7 @@ import transitions
 import glob
 import databases
 import datetime
+from .base import ModelValidators, ModelFieldTransformers
 
 PY_TYPES = {
     'string': str,
@@ -195,6 +196,7 @@ def load_model_spec(app: App, path: str):
     else:
         raise exc.AurelixException("Unknown model type %s" % model_type)
     validators = {'model': None, 'fields': {}}
+    field_transformers = {'inputTransformers': {}, 'outputTransformers': {}}
     if spec.validators:
         impl = load_multi_code_ref(spec.validators)
         validators['model'] = impl
@@ -202,7 +204,14 @@ def load_model_spec(app: App, path: str):
         if field.validators:
             impl = load_multi_code_ref(field.validators)
             validators['fields'][field_name] = impl
-    Collection.validators = schema.ModelValidators.model_validate(validators)
+        if field.inputTransformers:
+            impl = load_transform_code_ref(field.inputTransformers)
+            field_transformers['inputTransformers'][field_name] = impl
+        if field.outputTransformers:
+            impl = load_transform_code_ref(field.outputTransformers)
+            field_transformers['outputTransformers'][field_name] = impl
+    Collection.validators = ModelValidators.model_validate(validators)
+    Collection.fieldTransformers = ModelFieldTransformers.model_validate(field_transformers)
     if spec.stateMachine:
         state_machine = generate_statemachine(spec, name=snake_to_pascal(spec.name))
         Collection.StateMachine = state_machine
@@ -270,12 +279,12 @@ def load_transform_code_ref(coderefs: list[schema.CodeRefSpec] | schema.CodeRefS
         if impl:
             impls.append(impl)
     if impls:
-        async def wrapper(self, obj: dict) -> dict:
+        async def wrapper(self, obj: dict, *args, **kwargs) -> dict:
             for i in impls:
                 if inspect.iscoroutinefunction(impl):
-                    obj = await impl(self, obj) # type: ignore 
+                    obj = await impl(self, obj, *args, **kwargs) # type: ignore 
                 else:
-                    obj = impl(self, obj)
+                    obj = impl(self, obj, *args, **kwargs)
             return obj
         return wrapper
     return None
