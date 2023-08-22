@@ -11,7 +11,9 @@ RUN mkdir -p /opt/aurelix/ /opt/app/
 ADD setup.cfg /opt/aurelix/
 ADD setup.py /opt/aurelix/
 ADD MANIFEST.in /opt/aurelix/
-ADD aurelix /opt/aurelix/aurelix
+ADD aurelix /opt/aurelix/
+ADD README.md /opt/aurelix/
+ADD CHANGES.md /opt/aurelix/
 
 RUN python3.11 -m venv /opt/virtualenv && \
     /opt/virtualenv/bin/pip install -e /opt/aurelix[all]

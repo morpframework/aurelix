@@ -6,6 +6,7 @@
 - fixed after/before create/update/delete event hooks not triggering
 - fixed transform create/update/output transform hooks not overriding correctly
 - event hooks and transform hooks are now multi-item and chainable
+- fix MANIFEST.in that caused failure to install from pip
 
 
 ## 0.1.1 (2023-08-21)
