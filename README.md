@@ -2,6 +2,8 @@
 
 ## Installing
 
+Aurelix requires Python 3.11+
+
 Install full server
 
 ```console
