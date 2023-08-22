@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2 (unreleased)
+## 0.1.2.beta1 (2023-08-22)
 
 
 - fixed after/before create/update/delete event hooks not triggering
