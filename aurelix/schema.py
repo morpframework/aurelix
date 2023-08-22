@@ -20,6 +20,7 @@ class EnumSpec(pydantic.BaseModel):
 
 class CodeRefSpec(pydantic.BaseModel):
     function: str | None = None
+    function_name: str = 'function'
     code: str | None = None
 
 class FieldTypeSpec(pydantic.BaseModel):

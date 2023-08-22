@@ -297,7 +297,7 @@ def load_code_ref(spec: schema.CodeRefSpec, package=None):
                      'get_collection': get_collection, 
                      'Model': Model}
         exec(spec.code, namespace)
-        return namespace['function']
+        return namespace[spec.function_name]
     return None
 
 

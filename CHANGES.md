@@ -2,12 +2,10 @@
 
 ## 0.1.2b2 (unreleased)
 
-
 - Added hooks for field and model validation
-
+- allow specifying function name in CodeRefSpec
 
 ## 0.1.2.beta1 (2023-08-22)
-
 
 - fixed after/before create/update/delete event hooks not triggering
 - fixed transform create/update/output transform hooks not overriding correctly
