@@ -1,5 +1,11 @@
 # Changelog for Aurelix
 
+## 0.1.2b2 (unreleased)
+
+
+- Nothing changed yet.
+
+
 ## 0.1.2.beta1 (2023-08-22)
 
 
