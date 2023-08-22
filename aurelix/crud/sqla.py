@@ -19,11 +19,6 @@ from ..exc import SearchException
 
 class SQLACollection(BaseCollection):
 
-    name: str
-    Schema: type[pydantic.BaseModel]
-    permissionFilters: list[schema.PermissionFilterSpec]
-    defaultFieldPermission: schema.FieldPermission
-
     @validate_types
     def __init__(self, request: fastapi.Request, 
                  database: databases.Database, 
@@ -32,12 +27,6 @@ class SQLACollection(BaseCollection):
         self.request = request
         self.table = table
         self.db = database
-
-    @validate_types
-    def get_item_name(self, item: pydantic.BaseModel) -> str:
-        if hasattr(self.table.c, 'name'):
-            return item.name
-        return str(item.id)
 
     @validate_types
     async def create(self, item: pydantic.BaseModel) -> pydantic.BaseModel:
@@ -69,21 +58,6 @@ class SQLACollection(BaseCollection):
             return None
         item = self.Schema.model_validate(item._asdict())
         return item       
-    
-    @validate_types
-    async def get_by_id(self, id: int, secure: bool = True):
-        return await self._get_by_field('id', id, secure)
-
-    @validate_types
-    async def get(self, identifier: str, secure: bool=True):
-        if hasattr(self.table.c, 'name'):
-            return await self._get_by_field('name', identifier, secure)
-        try:
-            identifier = int(identifier)
-        except ValueError:
-            return None
-        return await self.get_by_id(int(identifier), secure)
-
     
     @validate_types
     async def search(self, query: str | None, offset: int = 0, limit: int | None = None, 
@@ -157,20 +131,6 @@ class SQLACollection(BaseCollection):
         await self.after_update(item)
         return item
     
-    @validate_types
-    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True):
-        return await self._update_by_field('id', id, item, secure)
-
-    @validate_types
-    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True):
-        if hasattr(self.table.c, 'name'):
-            return await self._update_by_field('name', identifier, item, secure)
-        try:
-            identifier = int(identifier)
-        except ValueError:
-            return None
-        return await self.update_by_id(int(identifier), item, secure)
-
     async def _delete_by_field(self, field, value, secure=True):
         item = await self._get_by_field(field, value, secure)
         if item is None:
@@ -187,19 +147,6 @@ class SQLACollection(BaseCollection):
         await self.after_delete(data)
         return True       
     
-    @validate_types
-    async def delete_by_id(self, id: int, secure: bool = True):
-        return await self._delete_by_field('id', id, secure)
-
-    @validate_types
-    async def delete(self, identifier: str, secure: bool = True):
-        if hasattr(self.table.c, 'name'):
-            return await self._delete_by_field('name', identifier, secure)
-        try:
-            identifier = int(identifier)
-        except ValueError:
-            return None
-        return await self.delete_by_id(int(identifier), secure)
 
 from sqlalchemy_utils.types.encrypted import encrypted_type
 

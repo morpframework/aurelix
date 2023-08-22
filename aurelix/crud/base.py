@@ -90,8 +90,10 @@ class BaseCollection(ExtensibleViewsApp):
         self.request = request
 
     @validate_types
-    def get_item_name(self, item: pydantic.BaseModel) -> str:
-        raise NotImplementedError
+    def get_identifier(self, item: pydantic.BaseModel) -> str:
+        if 'name' in self.Schema.model_fields.keys():
+            return item.name
+        return str(item.id)
 
     def url(self, item=None):
         comps = [str(self.request.base_url)[:-1]]
@@ -99,41 +101,70 @@ class BaseCollection(ExtensibleViewsApp):
             comps.append(self.request.scope['root_path'])
         comps.append(self.name)
         if item:
-            comps.append(self.get_item_name(item))
+            comps.append(self.get_identifier(item))
         return '/'.join(comps)
 
     @validate_types
     async def create(self, item: pydantic.BaseModel) -> pydantic.BaseModel:
         raise NotImplementedError
 
-    @validate_types
-    async def get_by_id(self, id: int):
+    async def _get_by_field(self, field, value, secure: bool = True):
         raise NotImplementedError
+  
+    @validate_types
+    async def get_by_id(self, id: int, secure: bool = True):
+        return await self._get_by_field('id', id, secure)
 
     @validate_types
-    async def get(self, name: str):
-        raise NotImplementedError
+    async def get(self, identifier: str, secure: bool=True):
+        if 'name' in self.Schema.model_fields.keys():
+            return await self._get_by_field('name', identifier, secure)
+        try:
+            identifier = int(identifier)
+        except ValueError:
+            return None
+        return await self.get_by_id(int(identifier), secure)
 
     @validate_types
     async def search(self, query: str | None, offset: int = 0, limit: int | None = None, 
                order_by: list[tuple[str,str]] | None = None):
         raise NotImplementedError
 
-    @validate_types
-    async def update_by_id(self, id: int, item: pydantic.BaseModel):
+
+    async def _update_by_field(self, field, value, item, secure: bool=True):
         raise NotImplementedError
+    
+    @validate_types
+    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True):
+        return await self._update_by_field('id', id, item, secure)
 
     @validate_types
-    async def update(self, name: str, item: pydantic.BaseModel):
+    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True):
+        if 'name' in self.Schema.model_fields.keys():
+            return await self._update_by_field('name', identifier, item, secure)
+        try:
+            identifier = int(identifier)
+        except ValueError:
+            return None
+        return await self.update_by_id(int(identifier), item, secure)
+
+    async def _delete_by_field(self, field, value, secure: bool =True):
         raise NotImplementedError
+    
+    @validate_types
+    async def delete_by_id(self, id: int, secure: bool = True):
+        return await self._delete_by_field('id', id, secure)
 
     @validate_types
-    async def delete_by_id(self, id: int):
-        raise NotImplementedError
+    async def delete(self, identifier: str, secure: bool = True):
+        if 'name' in self.Schema.model_fields.keys():
+            return await self._delete_by_field('name', identifier, secure)
+        try:
+            identifier = int(identifier)
+        except ValueError:
+            return None
+        return await self.delete_by_id(int(identifier), secure)
 
-    @validate_types
-    async def delete(self, name: str):
-        raise NotImplementedError
 
     async def get_permission_filters(self) -> list[str]:
         if not self.permissionFilters:
