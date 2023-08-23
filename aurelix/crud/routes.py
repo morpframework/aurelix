@@ -162,6 +162,11 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
             }
     if download_enabled: 
         @Collection.view('/{identifier}/file/{field}', method='GET', openapi_extra=openapi_extra, 
+                        responses={
+                            307: {
+                                'description': 'Redirect to presigned url',
+                            }
+                        },
                         summary='Download file from %s' % snake_to_human(collection_name))
         async def download(request: Request, col: Collection, model: Model, identifier: str, field: str) -> RedirectResponse:
             url = await col.get_presigned_download_url(identifier, field)
