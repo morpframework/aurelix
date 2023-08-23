@@ -3,6 +3,7 @@
 ## 0.1.2b3 (unreleased)
 
 - added object storage support for object uploads
+- added field editing guard for object storage fields and workflow fields
 
 ## 0.1.2b2 (2023-08-23)
 
