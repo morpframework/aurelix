@@ -179,6 +179,16 @@
 
 
 
+### `objectStore`
+
+**Description:** List of fields/properties that will be storing reference to uploaded files, and its upload method specification
+
+**Type:** `dict[str, aurelix.schema.ObjectStoreSpec] | None`
+
+**Default Value:** `None`
+
+
+
 ### `defaultFieldPermission`
 
 **Description:** Default permission for fields
