@@ -20,7 +20,7 @@ def gendoc(Model: pydantic.BaseModel) -> str:
                 ftype = dtype.__name__
             else:
                 ftype = str(dtype)
-            result.append('### Field: `%s`' % (field_name))
+            result.append('### `%s`' % (field_name))
             if field.description:
                 result.append('**Description:** ' + (field.description or ''))
             result.append('**Type:** `' + str(ftype) + '`')

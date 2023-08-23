@@ -5,7 +5,7 @@
 
 
 
-### Field: `debug`
+### `debug`
 
 **Type:** `bool`
 
@@ -13,7 +13,7 @@
 
 
 
-### Field: `title`
+### `title`
 
 **Type:** `str`
 
@@ -21,7 +21,7 @@
 
 
 
-### Field: `summary`
+### `summary`
 
 **Type:** `str | None`
 
@@ -29,7 +29,7 @@
 
 
 
-### Field: `version`
+### `version`
 
 **Type:** `str`
 
@@ -37,7 +37,7 @@
 
 
 
-### Field: `docs_url`
+### `docs_url`
 
 **Type:** `str`
 
@@ -45,7 +45,7 @@
 
 
 
-### Field: `redoc_url`
+### `redoc_url`
 
 **Type:** `str | None`
 
@@ -53,7 +53,7 @@
 
 
 
-### Field: `swagger_ui_oauth2_redirect_url`
+### `swagger_ui_oauth2_redirect_url`
 
 **Type:** `str`
 
@@ -61,7 +61,7 @@
 
 
 
-### Field: `swagger_ui_init_oauth`
+### `swagger_ui_init_oauth`
 
 **Type:** `aurelix.schema.InitOAuthSpec | None`
 
@@ -69,7 +69,7 @@
 
 
 
-### Field: `terms_of_service`
+### `terms_of_service`
 
 **Type:** `str | None`
 
@@ -77,7 +77,7 @@
 
 
 
-### Field: `model_directory`
+### `model_directory`
 
 **Description:** directory to load models from
 
@@ -87,7 +87,7 @@
 
 
 
-### Field: `libs_directory`
+### `libs_directory`
 
 **Description:** directory to add into PYTHONPATH
 
@@ -97,7 +97,7 @@
 
 
 
-### Field: `databases`
+### `databases`
 
 **Description:** list of databases
 
@@ -107,7 +107,7 @@
 
 
 
-### Field: `oidc_discovery_endpoint`
+### `oidc_discovery_endpoint`
 
 **Description:** OIDC discovery endpoint for authentication
 
@@ -117,7 +117,7 @@
 
 
 
-### Field: `views`
+### `views`
 
 **Description:** List of views to register on this app
 
@@ -130,7 +130,7 @@
 
 
 
-### Field: `well_known_config`
+### `well_known_config`
 
 **Type:** `ViewSpec`
 
@@ -138,7 +138,7 @@
 
 
 
-### Field: `extensions`
+### `extensions`
 
 **Type:** `dict[str, aurelix.schema.ExtensionViewSpec] | None`
 
@@ -149,7 +149,7 @@
 
 
 
-### Field: `name`
+### `name`
 
 **Description:** Name of model
 
@@ -159,7 +159,7 @@
 
 
 
-### Field: `storageType`
+### `storageType`
 
 **Description:** Type of storage to store this model in
 
@@ -169,7 +169,7 @@
 
 
 
-### Field: `fields`
+### `fields`
 
 **Description:** List of fields/properties this model have
 
@@ -179,7 +179,7 @@
 
 
 
-### Field: `defaultFieldPermission`
+### `defaultFieldPermission`
 
 **Description:** Default permission for fields
 
@@ -189,7 +189,7 @@
 
 
 
-### Field: `views`
+### `views`
 
 **Description:** List of views this model have
 
@@ -199,7 +199,7 @@
 
 
 
-### Field: `tags`
+### `tags`
 
 **Description:** OpenAPI tag which this model shall be tagged under
 
@@ -209,7 +209,7 @@
 
 
 
-### Field: `stateMachine`
+### `stateMachine`
 
 **Description:** StateMachine specification for this model for workflow support
 
@@ -219,7 +219,7 @@
 
 
 
-### Field: `beforeCreate`
+### `beforeCreate`
 
 **Description:** Event hook, before item is insert into database
 
@@ -229,7 +229,7 @@
 
 
 
-### Field: `afterCreate`
+### `afterCreate`
 
 **Description:** Event hook, after item have been inserted into database
 
@@ -239,7 +239,7 @@
 
 
 
-### Field: `beforeUpdate`
+### `beforeUpdate`
 
 **Description:** Event hook, before item is updated in database
 
@@ -249,7 +249,7 @@
 
 
 
-### Field: `afterUpdate`
+### `afterUpdate`
 
 **Description:** Event hook, after item is updated in database
 
@@ -259,7 +259,7 @@
 
 
 
-### Field: `beforeDelete`
+### `beforeDelete`
 
 **Description:** Event hook, before item deleted in database
 
@@ -269,7 +269,7 @@
 
 
 
-### Field: `afterDelete`
+### `afterDelete`
 
 **Description:** Event hook, after item is deleted in database
 
@@ -279,7 +279,7 @@
 
 
 
-### Field: `transformCreateData`
+### `transformCreateData`
 
 **Description:** Transform hook, to transform item before inserted into database
 
@@ -289,7 +289,7 @@
 
 
 
-### Field: `transformUpdateData`
+### `transformUpdateData`
 
 **Description:** Transform hook, to transform item before updated in database
 
@@ -299,7 +299,7 @@
 
 
 
-### Field: `transformOutputData`
+### `transformOutputData`
 
 **Description:** Transform hook, before item is returned for display
 
@@ -309,7 +309,7 @@
 
 
 
-### Field: `permissionFilters`
+### `permissionFilters`
 
 **Description:** Permission rules for rows and field security
 
@@ -319,7 +319,7 @@
 
 
 
-### Field: `validators`
+### `validators`
 
 **Description:** Event hook, for validating model before insert/update into database
 
@@ -329,7 +329,7 @@
 
 
 
-### Field: `maxPageSize`
+### `maxPageSize`
 
 **Description:** Maximum number of items in listing pages
 
@@ -342,7 +342,7 @@
 
 
 
-### Field: `listing`
+### `listing`
 
 **Type:** `ViewSpec`
 
@@ -350,7 +350,7 @@
 
 
 
-### Field: `create`
+### `create`
 
 **Type:** `ViewSpec`
 
@@ -358,7 +358,7 @@
 
 
 
-### Field: `read`
+### `read`
 
 **Type:** `ViewSpec`
 
@@ -366,7 +366,7 @@
 
 
 
-### Field: `update`
+### `update`
 
 **Type:** `ViewSpec`
 
@@ -374,7 +374,7 @@
 
 
 
-### Field: `delete`
+### `delete`
 
 **Type:** `ViewSpec`
 
@@ -382,7 +382,7 @@
 
 
 
-### Field: `extensions`
+### `extensions`
 
 **Type:** `dict[str, aurelix.schema.ExtensionViewSpec] | None`
 
@@ -393,7 +393,7 @@
 
 
 
-### Field: `enabled`
+### `enabled`
 
 **Type:** `bool`
 
