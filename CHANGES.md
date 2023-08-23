@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2b2 (unreleased)
+## 0.1.2b2 (2023-08-23)
 
 - Added hooks for field and model validation
 - allow specifying function name in CodeRefSpec
