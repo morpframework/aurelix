@@ -30,12 +30,8 @@ class SQLACollection(BaseCollection):
 
     @validate_types
     async def create(self, item: pydantic.BaseModel, secure=True, modify_object_store_fields=False) -> pydantic.BaseModel:
-        data = await self.transform_create_data(item, secure=secure)
+        data = await self.transform_create_data(item, secure=secure, modify_object_store_fields=modify_object_store_fields)
         await self.before_create(data)
-        if secure:
-            if not modify_object_store_fields:
-                for k in self.objectStore.keys():
-                    if k in data: del data[k]
         async with self.db.transaction() as txn:
             query = self.table.insert().values(**data)
             new_id = await self.db.execute(query)
@@ -118,17 +114,13 @@ class SQLACollection(BaseCollection):
         return result[0]
 
     async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool = False):
-        data = await self.transform_update_data(item, secure=secure)
+        data = await self.transform_update_data(item, secure=secure,
+                                                modify_object_store_fields=modify_object_store_fields)
         await self.before_update(data)
         filters = []
         if secure:
             filters = await self.get_permission_filters()
             filters = [sa.text(f) for f in filters]
-
-            if not modify_object_store_fields:
-                # no not update object storage field
-                for f in self.objectStore.keys():
-                    if f in data: del data[f]
 
         filters.append(getattr(self.table.c, field)==value)
         async with self.db.transaction() as txn:

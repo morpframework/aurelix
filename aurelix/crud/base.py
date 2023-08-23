@@ -240,7 +240,9 @@ class BaseCollection(ExtensibleViewsApp):
         data = item.model_dump()
         data = await self.apply_field_output_transformers(data)
         for k in protected_fields:
-            if k in data: del data[k]
+            if k in data: 
+                if data[k]:
+                    raise exc.ValidationError('Field %s is protected' % k)
 
         return await self._transform_output_data(data)
 
@@ -269,23 +271,37 @@ class BaseCollection(ExtensibleViewsApp):
                 data[field] = await transform(self, data[field], data)
         return data
 
-    async def transform_create_data(self, item: pydantic.BaseModel, secure: bool = True) -> dict:
+    async def transform_create_data(self, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields=False) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
         data = await self.apply_field_input_transformers(data)
         data = await self._transform_create_data(data)
         if secure:
             field_permissions = await self.get_field_permissions()
-    
-            # delete protected fields
+
+            # delete internal fields
+            internal_fields = schema.CoreModel.model_fields.keys()
+
+            for k in internal_fields:
+                if k in data: del data[k]
+
+            # reject protected fields
             protected_fields = (
                 field_permissions[schema.FieldPermission.readOnly] + 
-                field_permissions[schema.FieldPermission.restricted] + 
-                ['id']
+                field_permissions[schema.FieldPermission.restricted] 
             )
     
             for k in protected_fields:
-                if k in data: del data[k]
+                if k in data: 
+                    if data[k]:
+                        raise exc.ValidationError('Field %s is protected' % k)
+                    
+            if not modify_object_store_fields:
+                for k in self.objectStore.keys():
+                    if k in data:
+                        if data[k]:
+                            raise exc.ValidationError('Field %s is protected' % k)
+
         userinfo = await get_userinfo(self.request)
         creator = None
         if userinfo:
@@ -298,24 +314,38 @@ class BaseCollection(ExtensibleViewsApp):
     async def _transform_update_data(self, item: dict, secure: bool=True) -> dict:
         return item
     
-    async def transform_update_data(self, item: pydantic.BaseModel, secure: bool=True) -> dict:
+    async def transform_update_data(self, item: pydantic.BaseModel, secure: bool=True, modify_object_store_fields=False) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
         data = await self.apply_field_input_transformers(data)
         data = await self._transform_update_data(data)
         if secure:
             field_permissions = await self.get_field_permissions()
-    
-            # delete protected fields
+
+            # delete internal fields
+            internal_fields = schema.CoreModel.model_fields.keys()
+
+            for k in internal_fields:
+                if k in data: del data[k]
+
+            # reject protected fields
             protected_fields = (
                 field_permissions[schema.FieldPermission.readOnly] + 
-                field_permissions[schema.FieldPermission.restricted] + 
-                ['id']
+                field_permissions[schema.FieldPermission.restricted]
             )
     
             for k in protected_fields:
-                if k in data: del data[k]
-    
+                if k in data: 
+                    if data[k]:
+                        raise exc.ValidationError('Field %s is protected' % k)
+ 
+            if not modify_object_store_fields:
+                # no not update object storage field
+                for f in self.objectStore.keys():
+                    if f in data: 
+                        if data[f]:
+                            raise exc.ValidationError("Field %s is protected" % f)
+                        
         userinfo = await get_userinfo(self.request)
         editor = None
         if userinfo:
