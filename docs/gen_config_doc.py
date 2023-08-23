@@ -4,9 +4,7 @@ import typing
 import types
 
 def gendoc(Model: pydantic.BaseModel) -> str:
-        result = [
-            '# Configuration Options'
-        ]
+        result = []
         model_name = Model.__name__
         result.append('## %s' % Model.__name__)
         if Model.__doc__ != pydantic.BaseModel.__doc__:
@@ -23,14 +21,14 @@ def gendoc(Model: pydantic.BaseModel) -> str:
             else:
                 ftype = str(dtype)
             result.append('### Field: %s.%s' % (model_name, field_name))
-            result.append('**Type:** ' + str(ftype))
-            result.append('**Default Value:** ' + str(field.default))
             if field.description:
                 result.append('**Description:** ' + (field.description or ''))
+            result.append('**Type:** `' + str(ftype) + '`')
+            result.append('**Default Value:** `' + str(field.default) + '`')
             result.append('')
         print('\n\n'.join(result))
 
-
+print('# Configuration Options\n\n')
 gendoc(schema.AppSpec)
 gendoc(schema.AppViewsSpec)
 gendoc(schema.ModelSpec)

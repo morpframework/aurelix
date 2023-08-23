@@ -1,131 +1,130 @@
 # Configuration Options
 
+
 ## AppSpec
 
 
 
 ### Field: AppSpec.debug
 
-**Type:** bool
+**Type:** `bool`
 
-**Default Value:** False
+**Default Value:** `False`
 
 
 
 ### Field: AppSpec.title
 
-**Type:** str
+**Type:** `str`
 
-**Default Value:** Aurelix Application
+**Default Value:** `Aurelix Application`
 
 
 
 ### Field: AppSpec.summary
 
-**Type:** str | None
+**Type:** `str | None`
 
-**Default Value:** None
+**Default Value:** `None`
 
 
 
 ### Field: AppSpec.version
 
-**Type:** str
+**Type:** `str`
 
-**Default Value:** 0.1.0
+**Default Value:** `0.1.0`
 
 
 
 ### Field: AppSpec.docs_url
 
-**Type:** str
+**Type:** `str`
 
-**Default Value:** /
+**Default Value:** `/`
 
 
 
 ### Field: AppSpec.redoc_url
 
-**Type:** str | None
+**Type:** `str | None`
 
-**Default Value:** None
+**Default Value:** `None`
 
 
 
 ### Field: AppSpec.swagger_ui_oauth2_redirect_url
 
-**Type:** str
+**Type:** `str`
 
-**Default Value:** /oauth2-redirect
+**Default Value:** `/oauth2-redirect`
 
 
 
 ### Field: AppSpec.swagger_ui_init_oauth
 
-**Type:** aurelix.schema.InitOAuthSpec | None
+**Type:** `aurelix.schema.InitOAuthSpec | None`
 
-**Default Value:** None
+**Default Value:** `None`
 
 
 
 ### Field: AppSpec.terms_of_service
 
-**Type:** str | None
+**Type:** `str | None`
 
-**Default Value:** None
+**Default Value:** `None`
 
 
 
 ### Field: AppSpec.model_directory
 
-**Type:** str
-
-**Default Value:** models
-
 **Description:** directory to load models from
+
+**Type:** `str`
+
+**Default Value:** `models`
 
 
 
 ### Field: AppSpec.libs_directory
 
-**Type:** str
-
-**Default Value:** libs
-
 **Description:** directory to add into PYTHONPATH
+
+**Type:** `str`
+
+**Default Value:** `libs`
 
 
 
 ### Field: AppSpec.databases
 
-**Type:** list[aurelix.schema.DatabaseSpec] | None
-
-**Default Value:** None
-
 **Description:** list of databases
+
+**Type:** `list[aurelix.schema.DatabaseSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: AppSpec.oidc_discovery_endpoint
 
-**Type:** str | None
-
-**Default Value:** None
-
 **Description:** OIDC discovery endpoint for authentication
+
+**Type:** `str | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: AppSpec.views
 
-**Type:** AppViewsSpec
-
-**Default Value:** PydanticUndefined
-
 **Description:** List of views to register on this app
 
+**Type:** `AppViewsSpec`
 
-# Configuration Options
+**Default Value:** `PydanticUndefined`
+
 
 ## AppViewsSpec
 
@@ -133,20 +132,18 @@
 
 ### Field: AppViewsSpec.well_known_config
 
-**Type:** ViewSpec
+**Type:** `ViewSpec`
 
-**Default Value:** PydanticUndefined
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: AppViewsSpec.extensions
 
-**Type:** dict[str, aurelix.schema.ExtensionViewSpec] | None
+**Type:** `dict[str, aurelix.schema.ExtensionViewSpec] | None`
 
-**Default Value:** None
+**Default Value:** `None`
 
-
-# Configuration Options
 
 ## ModelSpec
 
@@ -154,194 +151,192 @@
 
 ### Field: ModelSpec.name
 
-**Type:** str
-
-**Default Value:** PydanticUndefined
-
 **Description:** Name of model
+
+**Type:** `str`
+
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelSpec.storageType
 
-**Type:** StorageTypeSpec
-
-**Default Value:** PydanticUndefined
-
 **Description:** Type of storage to store this model in
+
+**Type:** `StorageTypeSpec`
+
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelSpec.fields
 
-**Type:** dict[str, aurelix.schema.FieldSpec]
-
-**Default Value:** PydanticUndefined
-
 **Description:** List of fields/properties this model have
+
+**Type:** `dict[str, aurelix.schema.FieldSpec]`
+
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelSpec.defaultFieldPermission
 
-**Type:** FieldPermission
-
-**Default Value:** readWrite
-
 **Description:** Default permission for fields
+
+**Type:** `FieldPermission`
+
+**Default Value:** `readWrite`
 
 
 
 ### Field: ModelSpec.views
 
-**Type:** ModelViewsSpec
-
-**Default Value:** PydanticUndefined
-
 **Description:** List of views this model have
+
+**Type:** `ModelViewsSpec`
+
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelSpec.tags
 
-**Type:** list[str] | None
-
-**Default Value:** PydanticUndefined
-
 **Description:** OpenAPI tag which this model shall be tagged under
+
+**Type:** `list[str] | None`
+
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelSpec.stateMachine
 
-**Type:** aurelix.schema.StateMachineSpec | None
-
-**Default Value:** None
-
 **Description:** StateMachine specification for this model for workflow support
+
+**Type:** `aurelix.schema.StateMachineSpec | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.beforeCreate
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Event hook, before item is insert into database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.afterCreate
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Event hook, after item have been inserted into database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.beforeUpdate
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Event hook, before item is updated in database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.afterUpdate
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Event hook, after item is updated in database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.beforeDelete
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Event hook, before item deleted in database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.afterDelete
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Event hook, after item is deleted in database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.transformCreateData
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Transform hook, to transform item before inserted into database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.transformUpdateData
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Transform hook, to transform item before updated in database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.transformOutputData
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Transform hook, before item is returned for display
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.permissionFilters
 
-**Type:** list[aurelix.schema.PermissionFilterSpec] | None
-
-**Default Value:** None
-
 **Description:** Permission rules for rows and field security
+
+**Type:** `list[aurelix.schema.PermissionFilterSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.validators
 
-**Type:** list[aurelix.schema.CodeRefSpec] | None
-
-**Default Value:** None
-
 **Description:** Event hook, for validating model before insert/update into database
+
+**Type:** `list[aurelix.schema.CodeRefSpec] | None`
+
+**Default Value:** `None`
 
 
 
 ### Field: ModelSpec.maxPageSize
 
-**Type:** int
-
-**Default Value:** 100
-
 **Description:** Maximum number of items in listing pages
 
+**Type:** `int`
 
-# Configuration Options
+**Default Value:** `100`
+
 
 ## ModelViewsSpec
 
@@ -349,52 +344,50 @@
 
 ### Field: ModelViewsSpec.listing
 
-**Type:** ViewSpec
+**Type:** `ViewSpec`
 
-**Default Value:** PydanticUndefined
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelViewsSpec.create
 
-**Type:** ViewSpec
+**Type:** `ViewSpec`
 
-**Default Value:** PydanticUndefined
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelViewsSpec.read
 
-**Type:** ViewSpec
+**Type:** `ViewSpec`
 
-**Default Value:** PydanticUndefined
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelViewsSpec.update
 
-**Type:** ViewSpec
+**Type:** `ViewSpec`
 
-**Default Value:** PydanticUndefined
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelViewsSpec.delete
 
-**Type:** ViewSpec
+**Type:** `ViewSpec`
 
-**Default Value:** PydanticUndefined
+**Default Value:** `PydanticUndefined`
 
 
 
 ### Field: ModelViewsSpec.extensions
 
-**Type:** dict[str, aurelix.schema.ExtensionViewSpec] | None
+**Type:** `dict[str, aurelix.schema.ExtensionViewSpec] | None`
 
-**Default Value:** None
+**Default Value:** `None`
 
-
-# Configuration Options
 
 ## ViewSpec
 
@@ -402,8 +395,8 @@
 
 ### Field: ViewSpec.enabled
 
-**Type:** bool
+**Type:** `bool`
 
-**Default Value:** True
+**Default Value:** `True`
 
 
