@@ -29,13 +29,17 @@ class SQLACollection(BaseCollection):
         self.db = database
 
     @validate_types
-    async def create(self, item: pydantic.BaseModel) -> pydantic.BaseModel:
-        data = await self.transform_create_data(item)
+    async def create(self, item: pydantic.BaseModel, secure=True, modify_object_store_fields=False) -> pydantic.BaseModel:
+        data = await self.transform_create_data(item, secure=secure)
         await self.before_create(data)
+        if secure:
+            if not modify_object_store_fields:
+                for k in self.objectStore.keys():
+                    if k in data: del data[k]
         async with self.db.transaction() as txn:
             query = self.table.insert().values(**data)
             new_id = await self.db.execute(query)
-            item = await self.get_by_id(new_id)
+            item = await self.get_by_id(new_id, secure=secure)
             if item is None:
                 raise exc.Forbidden("You are not allowed to create this object")
         await self.after_create(item)
@@ -113,13 +117,18 @@ class SQLACollection(BaseCollection):
             raise SearchException(str(e))
         return result[0]
 
-    async def _update_by_field(self, field, value, item, secure: bool=True):
-        data = await self.transform_update_data(item)
+    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool = False):
+        data = await self.transform_update_data(item, secure=secure)
         await self.before_update(data)
         filters = []
         if secure:
             filters = await self.get_permission_filters()
             filters = [sa.text(f) for f in filters]
+
+            if not modify_object_store_fields:
+                # no not update object storage field
+                for f in self.objectStore.keys():
+                    if f in data: del data[f]
 
         filters.append(getattr(self.table.c, field)==value)
         async with self.db.transaction() as txn:
@@ -135,7 +144,7 @@ class SQLACollection(BaseCollection):
         item = await self._get_by_field(field, value, secure)
         if item is None:
             raise exc.Forbidden('You are not allowed to delete this object')
-        data = await self.transform_delete_data(item)
+        data = await self.transform_delete_data(item, secure=secure)
         await self.before_delete(item)
         filters = []
         if secure:

@@ -107,7 +107,7 @@ class BaseCollection(ExtensibleViewsApp):
         return '/'.join(comps)
 
     @validate_types
-    async def create(self, item: pydantic.BaseModel) -> pydantic.BaseModel:
+    async def create(self, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False) -> pydantic.BaseModel:
         raise NotImplementedError
 
     async def _get_by_field(self, field, value, secure: bool = True) -> pydantic.BaseModel:
@@ -133,22 +133,22 @@ class BaseCollection(ExtensibleViewsApp):
         raise NotImplementedError
 
 
-    async def _update_by_field(self, field, value, item, secure: bool=True):
+    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool=False):
         raise NotImplementedError
     
     @validate_types
-    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True):
-        return await self._update_by_field('id', id, item, secure)
+    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False):
+        return await self._update_by_field('id', id, item, secure, modify_object_store_fields)
 
     @validate_types
-    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True):
+    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False):
         if 'name' in self.Schema.model_fields.keys():
-            return await self._update_by_field('name', identifier, item, secure)
+            return await self._update_by_field('name', identifier, item, secure, modify_object_store_fields)
         try:
             identifier = int(identifier)
         except ValueError:
             return None
-        return await self.update_by_id(int(identifier), item, secure)
+        return await self.update_by_id(int(identifier), item, secure, modify_object_store_fields)
 
     async def _delete_by_field(self, field, value, secure: bool =True):
         raise NotImplementedError
@@ -244,7 +244,7 @@ class BaseCollection(ExtensibleViewsApp):
 
         return await self._transform_output_data(data)
 
-    async def _transform_create_data(self, item: dict) -> dict:
+    async def _transform_create_data(self, item: dict, secure: bool = True) -> dict:
         return item
     
     async def apply_validators(self, data: dict):
@@ -269,22 +269,23 @@ class BaseCollection(ExtensibleViewsApp):
                 data[field] = await transform(self, data[field], data)
         return data
 
-    async def transform_create_data(self, item: pydantic.BaseModel) -> dict:
+    async def transform_create_data(self, item: pydantic.BaseModel, secure: bool = True) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
         data = await self.apply_field_input_transformers(data)
         data = await self._transform_create_data(data)
-        field_permissions = await self.get_field_permissions()
-
-        # delete protected fields
-        protected_fields = (
-            field_permissions[schema.FieldPermission.readOnly] + 
-            field_permissions[schema.FieldPermission.restricted] + 
-            ['id']
-        )
-
-        for k in protected_fields:
-            if k in data: del data[k]
+        if secure:
+            field_permissions = await self.get_field_permissions()
+    
+            # delete protected fields
+            protected_fields = (
+                field_permissions[schema.FieldPermission.readOnly] + 
+                field_permissions[schema.FieldPermission.restricted] + 
+                ['id']
+            )
+    
+            for k in protected_fields:
+                if k in data: del data[k]
         userinfo = await get_userinfo(self.request)
         creator = None
         if userinfo:
@@ -294,26 +295,27 @@ class BaseCollection(ExtensibleViewsApp):
         data['dateModified'] = datetime.datetime.utcnow()
         return data
 
-    async def _transform_update_data(self, item: dict) -> dict:
+    async def _transform_update_data(self, item: dict, secure: bool=True) -> dict:
         return item
     
-    async def transform_update_data(self, item: pydantic.BaseModel) -> dict:
+    async def transform_update_data(self, item: pydantic.BaseModel, secure: bool=True) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
         data = await self.apply_field_input_transformers(data)
         data = await self._transform_update_data(data)
-        field_permissions = await self.get_field_permissions()
-
-        # delete protected fields
-        protected_fields = (
-            field_permissions[schema.FieldPermission.readOnly] + 
-            field_permissions[schema.FieldPermission.restricted] + 
-            ['id']
-        )
-
-        for k in protected_fields:
-            if k in data: del data[k]
-
+        if secure:
+            field_permissions = await self.get_field_permissions()
+    
+            # delete protected fields
+            protected_fields = (
+                field_permissions[schema.FieldPermission.readOnly] + 
+                field_permissions[schema.FieldPermission.restricted] + 
+                ['id']
+            )
+    
+            for k in protected_fields:
+                if k in data: del data[k]
+    
         userinfo = await get_userinfo(self.request)
         editor = None
         if userinfo:
@@ -322,7 +324,7 @@ class BaseCollection(ExtensibleViewsApp):
         data['dateModified'] = datetime.datetime.utcnow()
         return data
 
-    async def transform_delete_data(self, item):
+    async def transform_delete_data(self, item, secure=True):
         return item.model_dump()
 
     async def before_create(self, data: dict):
@@ -361,7 +363,7 @@ class BaseCollection(ExtensibleViewsApp):
             key = '%s-%s-%s' % (identifier, field, str(uuid.uuid4()))
             data[field] = key
         item = self.Schema.model_validate(data)
-        await self.update(identifier, item)
+        await self.update(identifier, item, modify_object_store_fields=True)
         oss = self.objectStore[field]
         return await oss.get_presigned_upload_url(key)
     

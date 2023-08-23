@@ -2,9 +2,7 @@
 
 ## 0.1.2b3 (unreleased)
 
-
-- added object storage support
-
+- added object storage support for object uploads
 
 ## 0.1.2b2 (2023-08-23)
 
