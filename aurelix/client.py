@@ -156,6 +156,8 @@ class Model(object):
         self.collection = collection
 
     def url(self, path:str = None):
+        if '://' in path:
+            return path
         if path:
             if path.startswith('/'):
                 return self.data['links']['self'] + path
@@ -242,7 +244,8 @@ class Model(object):
         return self.api.patch(path, *args, **kwargs)
     
     def upload(self, field, data):
-        return self.put('/file/%s' % field, data=data)
+        presigned = self.get('/file/%s/+upload-url' % field)
+        return self.put(presigned['url'], data=data)
     
     def download(self, field):
         path = self.url('/file/%s' % field)
@@ -302,6 +305,8 @@ class Collection(object):
         self.config = config
 
     def url(self, path: str | int =None):
+        if '://' in path:
+            return path
         if path:
             path = str(path)
             if path.startswith('/'):

@@ -17,6 +17,7 @@ from ..utils import snake_to_pascal, snake_to_human, item_json
 
 def register_collection(app, Collection: type[BaseCollection], create_enabled=True, read_enabled=True, 
                         update_enabled=True, delete_enabled=True, listing_enabled=True, upload_enabled=True,
+                        download_enabled=True,
                         openapi_extra=None, max_page_size=100):
 
     openapi_extra = openapi_extra or {}
@@ -152,13 +153,14 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
             raise HTTPException(status_code=422, detail='Not Deleted')
         
     if upload_enabled:
-        @Collection.view('/{identifier}/file/{field}', method='PUT', openapi_extra=openapi_extra, 
+        @Collection.view('/{identifier}/file/{field}/+upload-url', method='GET', openapi_extra=openapi_extra, 
                         summary='Get presigned url to upload file to %s' % snake_to_human(collection_name))
-        async def presigned_upload(request: Request, col: Collection, model: Model, identifier: str, field: str) -> RedirectResponse:
+        async def presigned_upload(request: Request, col: Collection, model: Model, identifier: str, field: str) -> schema.PresignedUrlResponse:
             url = await col.get_presigned_upload_url(identifier, field)
-            print(url)
-            return RedirectResponse(url)
-
+            return {
+                'url': url
+            }
+    if download_enabled: 
         @Collection.view('/{identifier}/file/{field}', method='GET', openapi_extra=openapi_extra, 
                         summary='Download file from %s' % snake_to_human(collection_name))
         async def download(request: Request, col: Collection, model: Model, identifier: str, field: str) -> RedirectResponse:
