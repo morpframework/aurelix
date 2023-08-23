@@ -6,7 +6,7 @@ import types
 def gendoc(Model: pydantic.BaseModel) -> str:
         result = []
         model_name = Model.__name__
-        result.append('## %s' % Model.__name__)
+        result.append('## `%s:%s`' % (Model.__module__, Model.__name__))
         if Model.__doc__ != pydantic.BaseModel.__doc__:
             result.append(Model.__doc__ or '')
         anno = Model.__annotations__
@@ -20,7 +20,7 @@ def gendoc(Model: pydantic.BaseModel) -> str:
                 ftype = dtype.__name__
             else:
                 ftype = str(dtype)
-            result.append('### Field: %s.%s' % (model_name, field_name))
+            result.append('### Field: `%s`' % (field_name))
             if field.description:
                 result.append('**Description:** ' + (field.description or ''))
             result.append('**Type:** `' + str(ftype) + '`')

@@ -1,11 +1,11 @@
 # Configuration Options
 
 
-## AppSpec
+## `aurelix.schema:AppSpec`
 
 
 
-### Field: AppSpec.debug
+### Field: `debug`
 
 **Type:** `bool`
 
@@ -13,7 +13,7 @@
 
 
 
-### Field: AppSpec.title
+### Field: `title`
 
 **Type:** `str`
 
@@ -21,7 +21,7 @@
 
 
 
-### Field: AppSpec.summary
+### Field: `summary`
 
 **Type:** `str | None`
 
@@ -29,7 +29,7 @@
 
 
 
-### Field: AppSpec.version
+### Field: `version`
 
 **Type:** `str`
 
@@ -37,7 +37,7 @@
 
 
 
-### Field: AppSpec.docs_url
+### Field: `docs_url`
 
 **Type:** `str`
 
@@ -45,7 +45,7 @@
 
 
 
-### Field: AppSpec.redoc_url
+### Field: `redoc_url`
 
 **Type:** `str | None`
 
@@ -53,7 +53,7 @@
 
 
 
-### Field: AppSpec.swagger_ui_oauth2_redirect_url
+### Field: `swagger_ui_oauth2_redirect_url`
 
 **Type:** `str`
 
@@ -61,7 +61,7 @@
 
 
 
-### Field: AppSpec.swagger_ui_init_oauth
+### Field: `swagger_ui_init_oauth`
 
 **Type:** `aurelix.schema.InitOAuthSpec | None`
 
@@ -69,7 +69,7 @@
 
 
 
-### Field: AppSpec.terms_of_service
+### Field: `terms_of_service`
 
 **Type:** `str | None`
 
@@ -77,7 +77,7 @@
 
 
 
-### Field: AppSpec.model_directory
+### Field: `model_directory`
 
 **Description:** directory to load models from
 
@@ -87,7 +87,7 @@
 
 
 
-### Field: AppSpec.libs_directory
+### Field: `libs_directory`
 
 **Description:** directory to add into PYTHONPATH
 
@@ -97,7 +97,7 @@
 
 
 
-### Field: AppSpec.databases
+### Field: `databases`
 
 **Description:** list of databases
 
@@ -107,7 +107,7 @@
 
 
 
-### Field: AppSpec.oidc_discovery_endpoint
+### Field: `oidc_discovery_endpoint`
 
 **Description:** OIDC discovery endpoint for authentication
 
@@ -117,7 +117,7 @@
 
 
 
-### Field: AppSpec.views
+### Field: `views`
 
 **Description:** List of views to register on this app
 
@@ -126,11 +126,11 @@
 **Default Value:** `PydanticUndefined`
 
 
-## AppViewsSpec
+## `aurelix.schema:AppViewsSpec`
 
 
 
-### Field: AppViewsSpec.well_known_config
+### Field: `well_known_config`
 
 **Type:** `ViewSpec`
 
@@ -138,18 +138,18 @@
 
 
 
-### Field: AppViewsSpec.extensions
+### Field: `extensions`
 
 **Type:** `dict[str, aurelix.schema.ExtensionViewSpec] | None`
 
 **Default Value:** `None`
 
 
-## ModelSpec
+## `aurelix.schema:ModelSpec`
 
 
 
-### Field: ModelSpec.name
+### Field: `name`
 
 **Description:** Name of model
 
@@ -159,7 +159,7 @@
 
 
 
-### Field: ModelSpec.storageType
+### Field: `storageType`
 
 **Description:** Type of storage to store this model in
 
@@ -169,7 +169,7 @@
 
 
 
-### Field: ModelSpec.fields
+### Field: `fields`
 
 **Description:** List of fields/properties this model have
 
@@ -179,7 +179,7 @@
 
 
 
-### Field: ModelSpec.defaultFieldPermission
+### Field: `defaultFieldPermission`
 
 **Description:** Default permission for fields
 
@@ -189,7 +189,7 @@
 
 
 
-### Field: ModelSpec.views
+### Field: `views`
 
 **Description:** List of views this model have
 
@@ -199,7 +199,7 @@
 
 
 
-### Field: ModelSpec.tags
+### Field: `tags`
 
 **Description:** OpenAPI tag which this model shall be tagged under
 
@@ -209,7 +209,7 @@
 
 
 
-### Field: ModelSpec.stateMachine
+### Field: `stateMachine`
 
 **Description:** StateMachine specification for this model for workflow support
 
@@ -219,7 +219,7 @@
 
 
 
-### Field: ModelSpec.beforeCreate
+### Field: `beforeCreate`
 
 **Description:** Event hook, before item is insert into database
 
@@ -229,7 +229,7 @@
 
 
 
-### Field: ModelSpec.afterCreate
+### Field: `afterCreate`
 
 **Description:** Event hook, after item have been inserted into database
 
@@ -239,7 +239,7 @@
 
 
 
-### Field: ModelSpec.beforeUpdate
+### Field: `beforeUpdate`
 
 **Description:** Event hook, before item is updated in database
 
@@ -249,7 +249,7 @@
 
 
 
-### Field: ModelSpec.afterUpdate
+### Field: `afterUpdate`
 
 **Description:** Event hook, after item is updated in database
 
@@ -259,7 +259,7 @@
 
 
 
-### Field: ModelSpec.beforeDelete
+### Field: `beforeDelete`
 
 **Description:** Event hook, before item deleted in database
 
@@ -269,7 +269,7 @@
 
 
 
-### Field: ModelSpec.afterDelete
+### Field: `afterDelete`
 
 **Description:** Event hook, after item is deleted in database
 
@@ -279,7 +279,7 @@
 
 
 
-### Field: ModelSpec.transformCreateData
+### Field: `transformCreateData`
 
 **Description:** Transform hook, to transform item before inserted into database
 
@@ -289,7 +289,7 @@
 
 
 
-### Field: ModelSpec.transformUpdateData
+### Field: `transformUpdateData`
 
 **Description:** Transform hook, to transform item before updated in database
 
@@ -299,7 +299,7 @@
 
 
 
-### Field: ModelSpec.transformOutputData
+### Field: `transformOutputData`
 
 **Description:** Transform hook, before item is returned for display
 
@@ -309,7 +309,7 @@
 
 
 
-### Field: ModelSpec.permissionFilters
+### Field: `permissionFilters`
 
 **Description:** Permission rules for rows and field security
 
@@ -319,7 +319,7 @@
 
 
 
-### Field: ModelSpec.validators
+### Field: `validators`
 
 **Description:** Event hook, for validating model before insert/update into database
 
@@ -329,7 +329,7 @@
 
 
 
-### Field: ModelSpec.maxPageSize
+### Field: `maxPageSize`
 
 **Description:** Maximum number of items in listing pages
 
@@ -338,19 +338,11 @@
 **Default Value:** `100`
 
 
-## ModelViewsSpec
+## `aurelix.schema:ModelViewsSpec`
 
 
 
-### Field: ModelViewsSpec.listing
-
-**Type:** `ViewSpec`
-
-**Default Value:** `PydanticUndefined`
-
-
-
-### Field: ModelViewsSpec.create
+### Field: `listing`
 
 **Type:** `ViewSpec`
 
@@ -358,7 +350,7 @@
 
 
 
-### Field: ModelViewsSpec.read
+### Field: `create`
 
 **Type:** `ViewSpec`
 
@@ -366,7 +358,7 @@
 
 
 
-### Field: ModelViewsSpec.update
+### Field: `read`
 
 **Type:** `ViewSpec`
 
@@ -374,7 +366,7 @@
 
 
 
-### Field: ModelViewsSpec.delete
+### Field: `update`
 
 **Type:** `ViewSpec`
 
@@ -382,18 +374,26 @@
 
 
 
-### Field: ModelViewsSpec.extensions
+### Field: `delete`
+
+**Type:** `ViewSpec`
+
+**Default Value:** `PydanticUndefined`
+
+
+
+### Field: `extensions`
 
 **Type:** `dict[str, aurelix.schema.ExtensionViewSpec] | None`
 
 **Default Value:** `None`
 
 
-## ViewSpec
+## `aurelix.schema:ViewSpec`
 
 
 
-### Field: ViewSpec.enabled
+### Field: `enabled`
 
 **Type:** `bool`
 
