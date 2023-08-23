@@ -10,6 +10,7 @@ SERVER_REQUIRES=[
     'pydantic',
     'sqlalchemy',
     'sqlalchemy_utils',
+    'alembic',
     'databases[aiopg,aiomysql,aiosqlite]',
     'aiosqlite',
     'aiopg',

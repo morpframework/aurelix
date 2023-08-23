@@ -27,7 +27,10 @@ $ aurelix init myproject
 And start it using
 
 ```console
-$ aurelix run -c myproject/app.yaml
+$ cd myproject/
+$ alembic revision --autogenerate -m "initial model"
+$ alembic upgrade head
+$ aurelix run -c app.yaml
 ```
 
 ## Example app
