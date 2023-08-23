@@ -23,10 +23,10 @@ def gendoc(Model: pydantic.BaseModel) -> str:
             else:
                 ftype = str(dtype)
             result.append('### Field: %s.%s' % (model_name, field_name))
-            result.append('*Type:* ' + str(ftype))
-            result.append('*Default Value:* ' + str(field.default))
+            result.append('**Type:** ' + str(ftype))
+            result.append('**Default Value:** ' + str(field.default))
             if field.description:
-                result.append('*Description:* ' + (field.description or ''))
+                result.append('**Description:** ' + (field.description or ''))
             result.append('')
         print('\n\n'.join(result))
 
