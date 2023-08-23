@@ -99,8 +99,25 @@ class APIClient(object):
             if data:
                 raise RemoteException('Error %s: %s' % (resp.status_code, data['detail']))
             raise RemoteException('Error %s' % resp.status_code)
-        data = resp.json()
-        return data
+        if resp.text:
+            content_type = resp.headers.get('content-type', '').lower()
+            if content_type == 'application/json':
+                data = resp.json()
+                return data
+            return resp.text
+        return None
+    
+    def stream_request(self, method, path, *args, **kwargs):
+        url = self.url(path)
+        kwargs['stream'] = True
+        if self.token:
+            kwargs.setdefault('headers', {})
+            kwargs['headers']['Authorization'] = self.token.token_type + ' ' + self.token.access_token
+        with getattr(requests, method.lower())(url, *args, **kwargs) as resp:
+            resp: requests.Response = resp
+            resp.raise_for_status()
+            for chunk in resp.iter_content(chunk_size=1024*1024):
+                yield chunk
     
     def get(self, path, *args, **kwargs):
         return self.request(method='get', path=path, *args, **kwargs)
@@ -116,6 +133,8 @@ class APIClient(object):
     
     def patch(self, path, *args, **kwargs):
         return self.request(method='patch', path=path, *args, **kwargs)
+    
+
         
     def get_config(self) -> schema.WellKnownConfiguration:
         data = self.get('/.well-known/aurelix-configuration')
@@ -221,6 +240,13 @@ class Model(object):
     def patch(self, path='/', *args, **kwargs):
         path = self.url(path)
         return self.api.patch(path, *args, **kwargs)
+    
+    def upload(self, field, data):
+        return self.put('/file/%s' % field, data=data)
+    
+    def download(self, field):
+        path = self.url('/file/%s' % field)
+        return self.api.stream_request('get', path)
 
 class SearchResult(object):
     def __init__(self, api: APIClient, collection: 'Collection', result) -> None:

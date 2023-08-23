@@ -23,6 +23,9 @@ class Unauthorized(AurelixException):
 class Forbidden(AurelixException):
     status_code = 403
 
+class NotFound(AurelixException):
+    status_code = 404
+
 class CollectionNotFoundException(AurelixException):
     status_code = 404
 
@@ -30,7 +33,7 @@ class CollectionNotFoundException(AurelixException):
         message = 'Could not found collection in context %s' % message
         super().__init__(message, *args)   
 
-class RecordNotFoundException(AurelixException):
+class RecordNotFoundException(NotFound):
     status_code = 404
 
     def __init__(self, message, *args):

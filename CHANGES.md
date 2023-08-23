@@ -3,7 +3,7 @@
 ## 0.1.2b3 (unreleased)
 
 
-- Nothing changed yet.
+- added object storage support
 
 
 ## 0.1.2b2 (2023-08-23)

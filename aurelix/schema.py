@@ -104,11 +104,24 @@ class PermissionFilterSpec(pydantic.BaseModel):
     readOnlyFields: list[str] | None = pydantic.Field(None, description='List of fields that are read-only')
     restrictedFields: list[str] | None = pydantic.Field(None, description='List of fields that are hidden/restricted')
 
+class ObjectStoreType(enum.StrEnum):
+    minio: str = 'minio'
+
+class ObjectStoreSpec(pydantic.BaseModel):
+
+    type: ObjectStoreType = str(ObjectStoreType.minio)
+    endpoint_url: str
+    bucket: str
+    access_key_env: str
+    secret_key_env: str
+
 class ModelSpec(pydantic.BaseModel):
 
     name: str = pydantic.Field(description='Name of model')
     storageType: StorageTypeSpec = pydantic.Field(description='Type of storage to store this model in')
     fields: dict[str, FieldSpec] = pydantic.Field(description='List of fields/properties this model have')
+    objectStore: dict[str, ObjectStoreSpec] | None = pydantic.Field(None,
+        description='List of fields/properties that will be storing reference to uploaded files, and its upload method specification')
     defaultFieldPermission: FieldPermission = pydantic.Field(str(FieldPermission.readWrite), description='Default permission for fields')
     views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec, description='List of views this model have')
     tags: list[str] | None = pydantic.Field(default_factory=list, description='OpenAPI tag which this model shall be tagged under')
@@ -264,3 +277,6 @@ class OIDCTokenResponse(pydantic.BaseModel):
     expires_in: int | None = None
     refresh_token: str | None = None
     id_token: str | None = None
+
+class PresignedUrlResponse(pydantic.BaseModel):
+    url: str

@@ -15,6 +15,7 @@ from .sqla import SQLACollection, EncryptedString
 from .base import StateMachine, ExtensibleViewsApp, BaseCollection
 from .routes import register_collection
 from .dependencies import get_collection, Collection, Model, App
+from .minios3 import MinioS3
 from ..dependencies import UserInfo
 from ..exc import AurelixException
 from ..settings import Settings
@@ -212,6 +213,18 @@ def load_model_spec(app: App, path: str):
             field_transformers['outputTransformers'][field_name] = impl
     Collection.validators = ModelValidators.model_validate(validators)
     Collection.fieldTransformers = ModelFieldTransformers.model_validate(field_transformers)
+
+    field_object_store = {}
+    if spec.objectStore:
+        for k,v in spec.objectStore.items():
+            if v.type == 'minio':
+                impl = MinioS3(endpoint_url=v.endpoint_url, bucket=v.bucket, 
+                               access_key_env=v.access_key_env, secret_key_env=v.secret_key_env)
+            else:
+                raise exc.AurelixException("Unknown object storage type %s" % v.type)
+            field_object_store[k] = impl
+    
+    Collection.objectStore = field_object_store
     if spec.stateMachine:
         state_machine = generate_statemachine(spec, name=snake_to_pascal(spec.name))
         Collection.StateMachine = state_machine

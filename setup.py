@@ -20,10 +20,11 @@ SERVER_REQUIRES=[
     'python-multipart',
     'aiohttp',
     'cryptography',
+    'minio'
 ]
 
 CLIENT_REQUIRES=[
-    'requests'
+    'requests',
 ]
 
 def read_file(name) -> str:

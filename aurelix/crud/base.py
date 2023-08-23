@@ -1,4 +1,5 @@
 from transitions.extensions.asyncio import AsyncMachine
+import os
 import dectate
 from ..utils import validate_types
 import pydantic
@@ -8,6 +9,7 @@ from .. import exc
 from .. import schema
 from ..dependencies import get_userinfo, get_permission_identities
 import typing
+import uuid
 
 class ModelValidators(pydantic.BaseModel):
     model: typing.Callable | None
@@ -16,7 +18,6 @@ class ModelValidators(pydantic.BaseModel):
 class ModelFieldTransformers(pydantic.BaseModel):
     inputTransformers: dict[str, typing.Callable]
     outputTransformers: dict[str, typing.Callable]
-
 
 class StateMachine(object):
 
@@ -84,6 +85,7 @@ class BaseCollection(ExtensibleViewsApp):
     defaultFieldPermission: schema.FieldPermission
     validators: ModelValidators
     fieldTransformers: ModelFieldTransformers
+    objectStore: dict[str, 'BaseObjectStore']
 
     @validate_types
     def __init__(self, request: fastapi.Request):
@@ -108,15 +110,15 @@ class BaseCollection(ExtensibleViewsApp):
     async def create(self, item: pydantic.BaseModel) -> pydantic.BaseModel:
         raise NotImplementedError
 
-    async def _get_by_field(self, field, value, secure: bool = True):
+    async def _get_by_field(self, field, value, secure: bool = True) -> pydantic.BaseModel:
         raise NotImplementedError
   
     @validate_types
-    async def get_by_id(self, id: int, secure: bool = True):
+    async def get_by_id(self, id: int, secure: bool = True) -> pydantic.BaseModel:
         return await self._get_by_field('id', id, secure)
 
     @validate_types
-    async def get(self, identifier: str, secure: bool=True):
+    async def get(self, identifier: str, secure: bool=True) -> pydantic.BaseModel:
         if 'name' in self.Schema.model_fields.keys():
             return await self._get_by_field('name', identifier, secure)
         try:
@@ -348,3 +350,54 @@ class BaseCollection(ExtensibleViewsApp):
     def model_validate(self, obj):
         return self.Schema.model_validate(obj)
 
+    async def get_presigned_upload_url(self, identifier, field) -> str:
+        if field not in self.objectStore:
+            raise exc.NotFound("No such object store field %s" % field)
+        item = await self.get(identifier)
+        data = item.model_dump()
+        if data[field]:
+            key = data[field]
+        else:
+            key = '%s-%s-%s' % (identifier, field, str(uuid.uuid4()))
+            data[field] = key
+        item = self.Schema.model_validate(data)
+        await self.update(identifier, item)
+        oss = self.objectStore[field]
+        return await oss.get_presigned_upload_url(key)
+    
+    async def get_presigned_download_url(self, identifier, field) -> str:
+        if field not in self.objectStore:
+            raise exc.NotFound("No such object store field %s" % field)
+        item = await self.get(identifier)
+        data = item.model_dump()
+        key = data[field]
+        if not key:
+            raise exc.NotFound("No object stored in field %s" % field)
+        oss = self.objectStore[field]
+        return await oss.get_presigned_download_url(key)
+
+    
+class BaseObjectStore(object):
+
+    def __init__(self, endpoint_url, bucket, access_key_env, secret_key_env):
+        self.endpoint_url = endpoint_url
+        self.bucket = bucket
+        self.access_key_env = access_key_env
+        self.secret_key_env = secret_key_env
+
+    async def get_presigned_upload_url(self, key) -> str:
+        raise NotImplementedError
+
+    async def get_presigned_download_url(self, key) -> str:
+        raise NotImplementedError
+
+    def get_client(self):
+        raise NotImplementedError
+    
+    @property
+    def access_key(self):
+        return os.environ[self.access_key_env]
+    
+    @property
+    def secret_key(self):
+        return os.environ[self.secret_key_env]
