@@ -1,5 +1,11 @@
 # Changelog for Aurelix
 
+## 0.1.2b3 (unreleased)
+
+
+- Nothing changed yet.
+
+
 ## 0.1.2b2 (2023-08-23)
 
 - Added hooks for field and model validation
