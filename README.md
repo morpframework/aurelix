@@ -150,9 +150,9 @@ $ aurelix run -l 0.0.0.0
 
 ## Configuration Spec
 
-For more details about `app.yaml` spec, checkout pydantic class `aurelix.schema:AppSpec`.
+For more details about `app.yaml` spec, checkout `AppSpec` in [configuration options](docs/config.md).
 
-For more details about model spec for `mymodel.yaml`, check out the Pydantic model in `aurelix.schema:ModelSpec`
+For more details about model spec for `mymodel.yaml`, check out `ModelSpec` in [configuration options](docs/config.md)
 
 ## Client Library 
 
