@@ -182,7 +182,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         @Collection.view('/{identifier}/+transition', method='POST', openapi_extra=openapi_extra, summary='Trigger state update for %s' % snake_to_human(collection_name))
         async def transition(request: Request, userinfo: UserInfo, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> schema.SimpleMessage:
             await col.trigger(model, transition.trigger, data=transition.data)
-            await col.update(identifier, model)
+            await col.update(identifier, model, modify_workflow_status=True)
             return {
                 'detail': 'OK'
             }

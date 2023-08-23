@@ -29,8 +29,9 @@ class SQLACollection(BaseCollection):
         self.db = database
 
     @validate_types
-    async def create(self, item: pydantic.BaseModel, secure=True, modify_object_store_fields=False) -> pydantic.BaseModel:
-        data = await self.transform_create_data(item, secure=secure, modify_object_store_fields=modify_object_store_fields)
+    async def create(self, item: pydantic.BaseModel, secure=True, modify_object_store_fields=False, modify_workflow_status=False) -> pydantic.BaseModel:
+        data = await self.transform_create_data(item, secure=secure, modify_object_store_fields=modify_object_store_fields,
+                                                modify_workflow_status=modify_workflow_status)
         await self.before_create(data)
         async with self.db.transaction() as txn:
             query = self.table.insert().values(**data)
@@ -113,9 +114,11 @@ class SQLACollection(BaseCollection):
             raise SearchException(str(e))
         return result[0]
 
-    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool = False):
+    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool = False, 
+                               modify_workflow_status: bool = False):
         data = await self.transform_update_data(item, secure=secure,
-                                                modify_object_store_fields=modify_object_store_fields)
+                                                modify_object_store_fields=modify_object_store_fields,
+                                                modify_workflow_status=modify_workflow_status)
         await self.before_update(data)
         filters = []
         if secure:

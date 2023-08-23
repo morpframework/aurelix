@@ -107,7 +107,8 @@ class BaseCollection(ExtensibleViewsApp):
         return '/'.join(comps)
 
     @validate_types
-    async def create(self, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False) -> pydantic.BaseModel:
+    async def create(self, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False, 
+                     modify_workflow_status: bool=False) -> pydantic.BaseModel:
         raise NotImplementedError
 
     async def _get_by_field(self, field, value, secure: bool = True) -> pydantic.BaseModel:
@@ -133,22 +134,22 @@ class BaseCollection(ExtensibleViewsApp):
         raise NotImplementedError
 
 
-    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool=False):
+    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool=False, modify_workflow_status: bool =False):
         raise NotImplementedError
     
     @validate_types
-    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False):
-        return await self._update_by_field('id', id, item, secure, modify_object_store_fields)
+    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False, modify_workflow_status: bool= False):
+        return await self._update_by_field('id', id, item, secure, modify_object_store_fields,modify_workflow_status=modify_workflow_status)
 
     @validate_types
-    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False):
+    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False, modify_workflow_status: bool= False):
         if 'name' in self.Schema.model_fields.keys():
-            return await self._update_by_field('name', identifier, item, secure, modify_object_store_fields)
+            return await self._update_by_field('name', identifier, item, secure, modify_object_store_fields, modify_workflow_status=modify_workflow_status)
         try:
             identifier = int(identifier)
         except ValueError:
             return None
-        return await self.update_by_id(int(identifier), item, secure, modify_object_store_fields)
+        return await self.update_by_id(int(identifier), item, secure, modify_object_store_fields, modify_workflow_status=modify_workflow_status)
 
     async def _delete_by_field(self, field, value, secure: bool =True):
         raise NotImplementedError
@@ -271,37 +272,63 @@ class BaseCollection(ExtensibleViewsApp):
                 data[field] = await transform(self, data[field], data)
         return data
 
-    async def transform_create_data(self, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields=False) -> dict:
+    async def apply_field_guards(self, data, modify_object_store_fields: bool = False, 
+                                 modify_workflow_status: bool=False):
+        field_permissions = await self.get_field_permissions()
+
+        # delete internal fields
+        internal_fields = schema.CoreModel.model_fields.keys()
+
+        for k in internal_fields:
+            if k in data: del data[k]
+
+        # reject protected fields
+        protected_fields = (
+            field_permissions[schema.FieldPermission.readOnly] + 
+            field_permissions[schema.FieldPermission.restricted] 
+        )
+
+        for k in protected_fields:
+            if k in data: 
+                if data[k]:
+                    raise exc.ValidationError('Field %s is protected' % k)
+                
+        if not modify_object_store_fields:
+            for k in self.objectStore.keys():
+                if k in data:
+                    if data[k]:
+                        raise exc.ValidationError('Field %s is protected' % k)
+
+        if not modify_workflow_status:
+            if getattr(self, 'StateMachine', None):
+                k = self.StateMachine.field
+                if k in data:
+                    if data[k]:
+                        raise exc.ValidationError('Field %s is protected' % k)
+                    
+        return data
+
+    async def transform_create_data(self, item: pydantic.BaseModel, secure: bool = True, 
+                                    modify_object_store_fields=False,
+                                    modify_workflow_status=False) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
         data = await self.apply_field_input_transformers(data)
         data = await self._transform_create_data(data)
         if secure:
-            field_permissions = await self.get_field_permissions()
+            if not modify_workflow_status:
+                if getattr(self, 'StateMachine', None):
+                    if data.get(self.StateMachine.field, None):
+                        if data[self.StateMachine.field] != self.StateMachine.states[0]:
+                            raise exc.ValidationError("Field %s is protected" % self.StateMachine.field)
+                        del data[self.StateMachine.field]
 
-            # delete internal fields
-            internal_fields = schema.CoreModel.model_fields.keys()
-
-            for k in internal_fields:
-                if k in data: del data[k]
-
-            # reject protected fields
-            protected_fields = (
-                field_permissions[schema.FieldPermission.readOnly] + 
-                field_permissions[schema.FieldPermission.restricted] 
-            )
-    
-            for k in protected_fields:
-                if k in data: 
-                    if data[k]:
-                        raise exc.ValidationError('Field %s is protected' % k)
-                    
-            if not modify_object_store_fields:
-                for k in self.objectStore.keys():
-                    if k in data:
-                        if data[k]:
-                            raise exc.ValidationError('Field %s is protected' % k)
-
+            data = await self.apply_field_guards(data, modify_object_store_fields=modify_object_store_fields,
+                                                 modify_workflow_status=modify_workflow_status)
+            if not modify_workflow_status:
+                if getattr(self, 'StateMachine', None):
+                    data[self.StateMachine.field] = self.StateMachine.states[0]
+            
         userinfo = await get_userinfo(self.request)
         creator = None
         if userinfo:
@@ -314,38 +341,16 @@ class BaseCollection(ExtensibleViewsApp):
     async def _transform_update_data(self, item: dict, secure: bool=True) -> dict:
         return item
     
-    async def transform_update_data(self, item: pydantic.BaseModel, secure: bool=True, modify_object_store_fields=False) -> dict:
+    async def transform_update_data(self, item: pydantic.BaseModel, secure: bool=True, 
+                                    modify_object_store_fields=False, modify_workflow_status: bool=False) -> dict:
         data = item.model_dump()
         await self.apply_validators(data)
         data = await self.apply_field_input_transformers(data)
         data = await self._transform_update_data(data)
         if secure:
-            field_permissions = await self.get_field_permissions()
-
-            # delete internal fields
-            internal_fields = schema.CoreModel.model_fields.keys()
-
-            for k in internal_fields:
-                if k in data: del data[k]
-
-            # reject protected fields
-            protected_fields = (
-                field_permissions[schema.FieldPermission.readOnly] + 
-                field_permissions[schema.FieldPermission.restricted]
-            )
-    
-            for k in protected_fields:
-                if k in data: 
-                    if data[k]:
-                        raise exc.ValidationError('Field %s is protected' % k)
- 
-            if not modify_object_store_fields:
-                # no not update object storage field
-                for f in self.objectStore.keys():
-                    if f in data: 
-                        if data[f]:
-                            raise exc.ValidationError("Field %s is protected" % f)
-                        
+            data = await self.apply_field_guards(data, modify_object_store_fields=modify_object_store_fields,
+                                                 modify_workflow_status=modify_workflow_status)
+                       
         userinfo = await get_userinfo(self.request)
         editor = None
         if userinfo:
