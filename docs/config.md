@@ -400,3 +400,160 @@
 **Default Value:** `True`
 
 
+## `aurelix.schema:ExtensionViewSpec`
+
+
+
+### `method`
+
+**Description:** Request method of this view
+
+**Type:** `RequestMethod`
+
+**Default Value:** `GET`
+
+
+
+### `summary`
+
+**Description:** OpenAPI summary of this view
+
+**Type:** `str | None`
+
+**Default Value:** `None`
+
+
+
+### `tags`
+
+**Description:** OpenAPI tags for this view
+
+**Type:** `list[str] | None`
+
+**Default Value:** `PydanticUndefined`
+
+
+
+### `openapi_extra`
+
+**Type:** `dict[str, typing.Any] | None`
+
+**Default Value:** `None`
+
+
+
+### `handler`
+
+**Description:** Function spec to handle this view
+
+**Type:** `CodeRefSpec`
+
+**Default Value:** `PydanticUndefined`
+
+
+## `aurelix.schema:StorageTypeSpec`
+
+
+
+### `name`
+
+**Type:** `str`
+
+**Default Value:** `PydanticUndefined`
+
+
+
+### `database`
+
+**Type:** `str`
+
+**Default Value:** `PydanticUndefined`
+
+
+## `aurelix.schema:StateMachineSpec`
+
+
+
+### `initialState`
+
+**Type:** `str`
+
+**Default Value:** `PydanticUndefined`
+
+
+
+### `field`
+
+**Type:** `str`
+
+**Default Value:** `workflowStatus`
+
+
+
+### `states`
+
+**Type:** `list[aurelix.schema.StateMachineStateSpec]`
+
+**Default Value:** `PydanticUndefined`
+
+
+
+### `transitions`
+
+**Type:** `list[aurelix.schema.StateMachineTransitionSpec]`
+
+**Default Value:** `PydanticUndefined`
+
+
+## `aurelix.schema:DatabaseSpec`
+
+
+
+### `name`
+
+**Type:** `str`
+
+**Default Value:** `PydanticUndefined`
+
+
+
+### `url`
+
+**Type:** `str`
+
+**Default Value:** `PydanticUndefined`
+
+
+## `aurelix.schema:CodeRefSpec`
+
+
+
+### `function`
+
+**Description:** Path to handler function in format app.module:function
+
+**Type:** `str | None`
+
+**Default Value:** `None`
+
+
+
+### `code`
+
+**Description:** Python code of handler function
+
+**Type:** `str | None`
+
+**Default Value:** `None`
+
+
+
+### `function_name`
+
+**Description:** Name of function to be loaded from code spec
+
+**Type:** `str`
+
+**Default Value:** `function`
+
+
