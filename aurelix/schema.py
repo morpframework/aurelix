@@ -19,9 +19,9 @@ class EnumSpec(pydantic.BaseModel):
     label: str
 
 class CodeRefSpec(pydantic.BaseModel):
-    function: str | None = None
-    function_name: str = 'function'
-    code: str | None = None
+    function: str | None = pydantic.Field(None, description='Path to handler function in format app.module:function')
+    code: str | None = pydantic.Field(None, description='Python code of handler function')
+    function_name: str = pydantic.Field('function', description='Name of function to be loaded from code spec')
 
 class FieldTypeSpec(pydantic.BaseModel):
     type: str
@@ -56,11 +56,11 @@ class RequestMethod(enum.StrEnum):
 
 
 class ExtensionViewSpec(pydantic.BaseModel):
-    method: RequestMethod = 'GET'
-    summary: str | None = None
-    tags: list[str] | None = pydantic.Field(default_factory=list)
+    method: RequestMethod = pydantic.Field('GET', description='Request method of this view')
+    summary: str | None = pydantic.Field(None, description='OpenAPI summary of this view')
+    tags: list[str] | None = pydantic.Field(default_factory=list, description='OpenAPI tags for this view')
     openapi_extra: dict[str, typing.Any] | None = None
-    handler: CodeRefSpec
+    handler: CodeRefSpec = pydantic.Field(description='Function spec to handle this view')
 
 class ModelViewsSpec(pydantic.BaseModel):
 
@@ -95,36 +95,36 @@ class FieldPermission(enum.StrEnum):
     restricted: str = "restricted"
 
 class PermissionFilterSpec(pydantic.BaseModel):
-    identities: list[str]
-    whereFilter: str | None = None
-    defaultFieldPermission: FieldPermission = str(FieldPermission.readWrite) # default permission to apply on fields
+    identities: list[str] = pydantic.Field(description='List of identities to match against')
+    whereFilter: str | None = pydantic.Field(None, description="'where' statement to add to CRUD uperations if identity matches")
+    defaultFieldPermission: FieldPermission = pydantic.Field(str(FieldPermission.readWrite), description='Default permission for fields')
 
     # field may appear in many list, the most restrictive wins
-    readWriteFields: list[str] | None = None # fields listed here are readwrite
-    readOnlyFields: list[str] | None = None # fields listed here are readonly
-    restrictedFields: list[str] | None = None # fields listed here are hidden
+    readWriteFields: list[str] | None = pydantic.Field(None, description='List of fields that are read-write')
+    readOnlyFields: list[str] | None = pydantic.Field(None, description='List of fields that are read-only')
+    restrictedFields: list[str] | None = pydantic.Field(None, description='List of fields that are hidden/restricted')
 
 class ModelSpec(pydantic.BaseModel):
 
-    name: str
-    storageType: StorageTypeSpec
-    fields: dict[str, FieldSpec]
-    defaultFieldPermission: FieldPermission = str(FieldPermission.readWrite)
-    views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec)
-    tags: list[str] | None = pydantic.Field(default_factory=list)
-    stateMachine: StateMachineSpec | None = None 
-    beforeCreate: list[CodeRefSpec] | None = None
-    afterCreate:  list[CodeRefSpec] | None = None
-    beforeUpdate: list[CodeRefSpec] | None = None
-    afterUpdate: list[CodeRefSpec] | None = None 
-    beforeDelete: list[CodeRefSpec] | None = None
-    afterDelete: list[CodeRefSpec] | None = None
-    transformCreateData: list[CodeRefSpec] | None = None 
-    transformUpdateData: list[CodeRefSpec] | None = None 
-    transformOutputData: list[CodeRefSpec] | None = None
-    permissionFilters: list[PermissionFilterSpec] | None = None
-    validators: list[CodeRefSpec] | None = None
-    maxPageSize: int = 100
+    name: str = pydantic.Field(description='Name of model')
+    storageType: StorageTypeSpec = pydantic.Field(description='Type of storage to store this model in')
+    fields: dict[str, FieldSpec] = pydantic.Field(description='List of fields/properties this model have')
+    defaultFieldPermission: FieldPermission = pydantic.Field(str(FieldPermission.readWrite), description='Default permission for fields')
+    views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec, description='List of views this model have')
+    tags: list[str] | None = pydantic.Field(default_factory=list, description='OpenAPI tag which this model shall be tagged under')
+    stateMachine: StateMachineSpec | None = pydantic.Field(None, description='StateMachine specification for this model for workflow support')
+    beforeCreate: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, before item is insert into database')
+    afterCreate:  list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, after item have been inserted into database')
+    beforeUpdate: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, before item is updated in database')
+    afterUpdate: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, after item is updated in database')
+    beforeDelete: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, before item deleted in database')
+    afterDelete: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, after item is deleted in database')
+    transformCreateData: list[CodeRefSpec] | None = pydantic.Field(None, description='Transform hook, to transform item before inserted into database')
+    transformUpdateData: list[CodeRefSpec] | None = pydantic.Field(None, description='Transform hook, to transform item before updated in database')
+    transformOutputData: list[CodeRefSpec] | None = pydantic.Field(None, description='Transform hook, before item is returned for display')
+    permissionFilters: list[PermissionFilterSpec] | None = pydantic.Field(None, description='Permission rules for rows and field security')
+    validators: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, for validating model before insert/update into database')
+    maxPageSize: int = pydantic.Field(100, description='Maximum number of items in listing pages')
 
 class DatabaseSpec(pydantic.BaseModel):
 
@@ -143,6 +143,7 @@ class AppViewsSpec(pydantic.BaseModel):
 class AppSpec(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(protected_namespaces=())
     debug: bool = False
+    # following config are just delegating to fastapi.FastAPI constructor
     title: str = "Aurelix Application"
     summary: str|None = None
     version: str = '0.1.0'
@@ -151,11 +152,15 @@ class AppSpec(pydantic.BaseModel):
     swagger_ui_oauth2_redirect_url: str = '/oauth2-redirect'
     swagger_ui_init_oauth: InitOAuthSpec | None = None
     terms_of_service: str | None = None
-    model_directory: str = 'models'
-    libs_directory: str = 'libs'
-    databases: list[DatabaseSpec] | None = None
-    oidc_discovery_endpoint: str | None = None
-    views: AppViewsSpec = pydantic.Field(default_factory=AppViewsSpec)
+
+    # following config are aurelix
+    model_directory: str = pydantic.Field('models', description='directory to load models from')
+    libs_directory: str = pydantic.Field('libs', description='directory to add into PYTHONPATH')
+
+    # list of sqlalchemy databases
+    databases: list[DatabaseSpec] | None = pydantic.Field(None, description='list of databases')
+    oidc_discovery_endpoint: str | None = pydantic.Field(None, description='OIDC discovery endpoint for authentication')
+    views: AppViewsSpec = pydantic.Field(default_factory=AppViewsSpec, description='List of views to register on this app')
 
 class SearchResultLinks(pydantic.BaseModel):
     next: str | None = None
