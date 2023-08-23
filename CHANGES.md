@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2b3 (unreleased)
+## 0.1.2b3 (2023-08-24)
 
 - added object storage support for object uploads
 - added field editing guard for object storage fields and workflow fields
