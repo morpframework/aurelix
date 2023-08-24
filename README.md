@@ -20,7 +20,7 @@ discoverability endpoint, you can use that OIDC provider for authentication.
 - State machine - Define state machine workflow chain for your model for state tracking, including custom functions to trigger on state change.
 - Event hooks - Register functions to be triggered on `create`, `update` and `delete` related events.
 
-Additionally, if you are a data engineer and need to have good management of your data model version and migration, Aurelix uses Alembic integration manage versioning of your data model.
+Additionally, if you are a data engineer and need to have good management of your data model version and migration, Aurelix uses Alembic integration manage versioning of your data model. The provided client library helps interacting with the API server for getting information stored on Aurelix breeze, which you can use for writing code-generating ETLs. 
 
 ## Installing
 
