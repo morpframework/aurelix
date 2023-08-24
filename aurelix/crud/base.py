@@ -7,7 +7,7 @@ import fastapi
 import datetime
 from .. import exc
 from .. import schema
-from ..dependencies import get_userinfo, get_permission_identities
+from ..dependencies import get_permission_identities, get_token
 import typing
 import uuid
 
@@ -329,10 +329,10 @@ class BaseCollection(ExtensibleViewsApp):
                 if getattr(self, 'StateMachine', None):
                     data[self.StateMachine.field] = self.StateMachine.states[0]
             
-        userinfo = await get_userinfo(self.request)
+        token = await get_token(self.request)
         creator = None
-        if userinfo:
-            creator = userinfo.email
+        if token:
+            creator = token.email
         data['creator'] = creator
         data['dateCreated'] = datetime.datetime.utcnow()
         data['dateModified'] = datetime.datetime.utcnow()
@@ -351,10 +351,10 @@ class BaseCollection(ExtensibleViewsApp):
             data = await self.apply_field_guards(data, modify_object_store_fields=modify_object_store_fields,
                                                  modify_workflow_status=modify_workflow_status)
                        
-        userinfo = await get_userinfo(self.request)
+        token = await get_token(self.request)
         editor = None
-        if userinfo:
-            editor = userinfo.email
+        if token:
+            editor = token.email
         data['editor'] = editor
         data['dateModified'] = datetime.datetime.utcnow()
         return data

@@ -16,7 +16,7 @@ from .base import StateMachine, ExtensibleViewsApp, BaseCollection
 from .routes import register_collection
 from .dependencies import get_collection, Collection, Model, App
 from .minios3 import MinioS3
-from ..dependencies import UserInfo
+from ..dependencies import Token
 from ..exc import AurelixException
 from ..settings import Settings
 from .. import schema
@@ -31,6 +31,7 @@ import glob
 import databases
 import datetime
 from .base import ModelValidators, ModelFieldTransformers
+import jwt
 
 PY_TYPES = {
     'string': str,
@@ -141,6 +142,9 @@ async def load_app(path: str):
                 raise exc.GatewayError("Unable to get OIDC discovery metadata")
             oidc_settings = schema.OIDCConfiguration.model_validate(resp.json())
             state.APP_STATE[app]['oidc_settings'] = oidc_settings
+            if not oidc_settings.jwks_uri:
+                raise exc.GatewayError("No JWKS URL provided by OIDC metadata")
+            state.APP_STATE[app]['oidc_jwk_client'] = jwt.PyJWKClient(oidc_settings.jwks_uri, cache_keys=True)
         
     register_views(app, spec)
 
@@ -314,7 +318,7 @@ def load_code_ref(spec: schema.CodeRefSpec, package=None):
         namespace = {'fastapi': fastapi,
                      'Request': fastapi.Request, 
                      'App': App,
-                     'UserInfo': UserInfo,
+                     'Token': Token,
                      'Collection': Collection, 
                      'get_collection': get_collection, 
                      'Model': Model}

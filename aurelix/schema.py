@@ -244,7 +244,38 @@ class OIDCUserInfo(pydantic.BaseModel):
     phone_number_verified: bool | None = None
     address: OIDCAddress | None = None
     updated_at: int | None = None
-    groups: list[str] | None = None
+    roles: list[str] | None = pydantic.Field(None, validation_alias=pydantic.AliasChoices('groups','roles'))
+
+class RealmAccess(pydantic.BaseModel):
+    roles: list[str] | None
+
+class ResourceAccess(pydantic.BaseModel):
+    roles: list[str] | None
+
+class OIDCAccessToken(pydantic.BaseModel):
+    exp: int | None = None
+    iat: int | None = None
+    jti: str | None = None
+    iss: str | None = None
+    aud: str | None = None
+    sub: str | None = None
+    typ: str | None = None
+    azp: str | None = None
+    session_state: str | None = None
+    acr: str | None = None
+    allowed_origins: list[str] | None = None
+    realm_access: RealmAccess | None = None
+    resource_access: dict[str, ResourceAccess] | None = None
+    scope: str | None = None
+    sid: str | None = None
+    email_verified: bool | None = None
+    roles: list[str] | None = pydantic.Field(None, validation_alias=pydantic.AliasChoices('roles','groups'))
+    name: str | None = None
+    preferred_username: str | None = None
+    given_name: str | None = None
+    family_name: str | None = None
+    email: str | None = None
+
 
 class WellKnownStateMachineTrigger(pydantic.BaseModel):
     name: str

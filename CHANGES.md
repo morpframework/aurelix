@@ -3,7 +3,8 @@
 ## 0.1.2b4 (unreleased)
 
 
-- Nothing changed yet.
+- validate & decode oidc token instead of blindly trusting it by querying userinfo endpoint
+- remove UserInfo class as a decoded token have sufficient identity information
 
 
 ## 0.1.2b3 (2023-08-24)

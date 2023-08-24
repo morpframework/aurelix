@@ -7,7 +7,9 @@ import typing
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security.utils import get_authorization_scheme_param
 from . import exc
+import jwt
 import httpx
+import traceback
 
 def get_oidc_configuration(request: fastapi.Request):
     app = request.app
@@ -19,15 +21,35 @@ OIDCConfiguration = typing.Annotated[schema.OIDCConfiguration, fastapi.Depends(g
 async def _get_token(request: fastapi.Request, oidc_settings: OIDCConfiguration):
     if not oidc_settings:
         return None
+
+    decoded = getattr(request.state, 'decoded_token', None)
+    if decoded:
+        return decoded
+    
     authorization = request.headers.get("Authorization")
-    scheme, param = get_authorization_scheme_param(authorization)
+    scheme, token = get_authorization_scheme_param(authorization)
     if not authorization or scheme.lower() != "bearer":
-        raise fastapi.HTTPException(
-                status_code=401,
-                detail="Not authenticated",
-                headers={"WWW-Authenticate": "Bearer"},
-        )
-    return param
+        raise exc.Unauthorized("Not authenticated")
+
+    jwk_client = state.APP_STATE[request.app]['oidc_jwk_client']
+    try: 
+        signing_key = jwk_client.get_signing_key_from_jwt(token)
+        # FIXME: should we really ignore audience claim
+        decoded = jwt.decode(token, key=signing_key.key, algorithms=oidc_settings.id_token_signing_alg_values_supported, options={'verify_aud': False})
+        
+    except jwt.InvalidTokenError as e:
+        raise exc.Unauthorized("Not authenticated")
+    except jwt.InvalidKeyError as e:
+        traceback.print_exc()
+        raise exc.Unauthorized("Not authenticated")
+
+    token = schema.OIDCAccessToken.model_validate(decoded)
+    if not token.sub:
+        raise exc.Unauthorized("No sub provided in token")
+    if not token.email and token.email_verified:
+        raise exc.Unauthorized("No valid email address")
+    request.state.decoded_token = token
+    return token
 
 class OAuth2Mixin(object):
 
@@ -57,49 +79,23 @@ if env_settings.OIDC_DISCOVERY_ENDPOINT:
                 )
             )
         ]
+    else:
+        raise exc.AurelixException("Unsupported OIDC scheme %s" % env_settings.OIDC_SCHEME)
     
-async def _get_userinfo(token: Token, oidc_settings: OIDCConfiguration) -> schema.OIDCUserInfo:
-    if token is None:
-        return None
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(oidc_settings.userinfo_endpoint, headers={'Authorization': 'Bearer %s' % token})
-        if resp.status_code != 200:
-            if resp.status_code == 401:
-                raise exc.Unauthorized("Invalid token")
-            raise exc.GatewayError('Unable to query OIDC userinfo endpoint (Error %s)' % (resp.status_code))
-        userinfo = resp.json()
-        if ('email' not in userinfo):
-            raise exc.GatewayError("OIDC userinfo endpoint did not provide 'email' property")
-        
-        # groups and roles are not especified in oidc standard, so different provider uses different practice
-        if 'groups' not in userinfo:
-            if 'roles' in userinfo:
-                userinfo['groups'] = userinfo['roles']
-        return schema.OIDCUserInfo.model_validate(userinfo)
-
-UserInfo = typing.Annotated[schema.OIDCUserInfo, fastapi.Depends(_get_userinfo)]
-
-async def get_token(request: fastapi.Request) -> str:
+async def get_token(request: fastapi.Request) -> schema.OIDCAccessToken:
     oidc_settings = get_oidc_configuration(request)
     token = await _get_token(request, oidc_settings)
     return token
 
-async def get_userinfo(request: fastapi.Request) -> schema.OIDCUserInfo:
-    oidc_settings = get_oidc_configuration(request)
-    token = await _get_token(request, oidc_settings)
-    userinfo = await _get_userinfo(token, oidc_settings)
-    return userinfo
-
 async def get_permission_identities(request: fastapi.Request) -> list[str]:
-    userinfo = await get_userinfo(request)
-    if userinfo is None:
+    token = await get_token(request)
+    if token is None:
         return []
     res = []
-    if userinfo.sub:
-        res.append('sub:%s' % userinfo.sub)
-    if userinfo.email and userinfo.email_verified:
-        res.append('email:%s' % userinfo.email)
-    if userinfo.groups:
-        for g in userinfo.groups:
-            res.append('group:%s' % g)
+    res.append('sub:%s' % token.sub)
+    if token.email and token.email_verified:
+        res.append('email:%s' % token.email)
+    if token.roles:
+        for g in token.roles:
+            res.append('role:%s' % g)
     return res

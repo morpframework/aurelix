@@ -20,7 +20,8 @@ SERVER_REQUIRES=[
     'python-multipart',
     'aiohttp',
     'cryptography',
-    'minio'
+    'minio',
+    'pyjwt'
 ]
 
 CLIENT_REQUIRES=[

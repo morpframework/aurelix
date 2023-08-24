@@ -53,7 +53,7 @@ class APIClient(object):
         scope = scope or self._scope or ['openid','email', 'profile', 'offline_access']
         self._scope = scope
         if not self.client_id:
-            return None
+            raise ClientException("client_id is not set")
         token_endpoint = self.openid_configuration.token_endpoint
         payload = {
             'grant_type': grant_type,

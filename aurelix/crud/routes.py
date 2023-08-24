@@ -10,7 +10,7 @@ from .. import schema
 from .. import exc
 from .base import BaseCollection
 from fastapi.responses import RedirectResponse
-from ..dependencies import UserInfo
+from ..dependencies import Token
 from .dependencies import Model
 from ..utils import snake_to_pascal, snake_to_human, item_json
 
@@ -60,7 +60,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         @Collection.view('/', method='GET', openapi_extra=openapi_extra, 
                          summary='List %s' % snake_to_human(collection_name),
                          response_model_exclude_none=True)
-        async def listing(request: Request, userinfo: UserInfo, query: str | None = None, 
+        async def listing(request: Request, token: Token, query: str | None = None, 
                           page: int = 0, page_size: int = 10, order_by: str | None = None) -> ModelSearchResult:
             if page_size > max_page_size:
                 page_size = 100
@@ -97,7 +97,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
 
     if create_enabled:
         @Collection.view('/', method='POST', openapi_extra=openapi_extra, summary='Create new %s' % snake_to_human(collection_name))
-        async def create(request: Request, userinfo: UserInfo, item: ModelInput, 
+        async def create(request: Request, token: Token, item: ModelInput, 
                         response_model_exclude_none=True) -> ModelResult:
             col = Collection(request)
             item = await col.create(item)
@@ -107,7 +107,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         @Collection.view('/{identifier}', method='GET', openapi_extra=openapi_extra, 
                          summary='Get %s' % snake_to_human(collection_name),
                          response_model_exclude_none=True)
-        async def read(request: Request, userinfo: UserInfo, col: Collection, model: Model, identifier: str) -> ModelResult:
+        async def read(request: Request, token: Token, col: Collection, model: Model, identifier: str) -> ModelResult:
             return ModelResult.model_validate({
                 'data': await item_json(col, model)
             })
@@ -120,7 +120,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         @Collection.view('/{identifier}', method='PATCH', openapi_extra=openapi_extra, 
                          summary='Update %s' % snake_to_human(collection_name),
                          response_model_exclude_none=True)
-        async def update_patch(request: Request, userinfo: UserInfo, identifier: str, col:Collection, 
+        async def update_patch(request: Request, token: Token, identifier: str, col:Collection, 
                                patch: typing.Annotated[dict[str, typing.Any | None], Body(example=patch_example)]) -> ModelResult:
             try:
                 ModelPatchInput.model_validate(patch)
@@ -137,14 +137,14 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
         @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, 
                          summary='Update %s (Full)' % snake_to_human(collection_name),
                          response_model_exclude_none=True)
-        async def update(request: Request, userinfo: UserInfo, identifier: str, col:Collection, item: ModelInput) -> ModelResult:
+        async def update(request: Request, token: Token, identifier: str, col:Collection, item: ModelInput) -> ModelResult:
             item = await col.update(identifier, item)
             return ModelResult.model_validate({'data': await item_json(col, item)})
 
     
     if delete_enabled:
         @Collection.view('/{identifier}', method='DELETE', openapi_extra=openapi_extra, summary='Delete %s' % snake_to_human(collection_name))
-        async def delete(request: Request, userinfo: UserInfo, identifier: str, col: Collection, model: Model, confirmation: schema.DeleteConfirmation) -> schema.SimpleMessage:
+        async def delete(request: Request, token: Token, identifier: str, col: Collection, model: Model, confirmation: schema.DeleteConfirmation) -> schema.SimpleMessage:
             if confirmation.delete:
                 result = await col.delete(identifier)
                 return {
@@ -155,7 +155,9 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
     if upload_enabled:
         @Collection.view('/{identifier}/file/{field}/+upload-url', method='GET', openapi_extra=openapi_extra, 
                         summary='Get presigned url to upload file to %s' % snake_to_human(collection_name))
-        async def presigned_upload(request: Request, col: Collection, model: Model, identifier: str, field: str) -> schema.PresignedUrlResponse:
+        async def presigned_upload(request: Request, col: Collection, model: Model, 
+                                   token: Token,
+                                   identifier: str, field: str) -> schema.PresignedUrlResponse:
             url = await col.get_presigned_upload_url(identifier, field)
             return {
                 'url': url
@@ -168,7 +170,9 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
                             }
                         },
                         summary='Download file from %s' % snake_to_human(collection_name))
-        async def download(request: Request, col: Collection, model: Model, identifier: str, field: str) -> RedirectResponse:
+        async def download(request: Request, col: Collection, model: Model, 
+                           token: Token,
+                           identifier: str, field: str) -> RedirectResponse:
             url = await col.get_presigned_download_url(identifier, field)
             return RedirectResponse(url)
         
@@ -180,7 +184,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
             data=(dict[str, typing.Any] | None, None)
         )
         @Collection.view('/{identifier}/+transition', method='POST', openapi_extra=openapi_extra, summary='Trigger state update for %s' % snake_to_human(collection_name))
-        async def transition(request: Request, userinfo: UserInfo, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> schema.SimpleMessage:
+        async def transition(request: Request, token: Token, identifier: str, col: Collection, model: Model, transition: ModelTransition) -> schema.SimpleMessage:
             await col.trigger(model, transition.trigger, data=transition.data)
             await col.update(identifier, model, modify_workflow_status=True)
             return {
