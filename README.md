@@ -7,7 +7,7 @@ Aurelix uses YAML for define composable data models in declarative manner and in
 Capabilities definable through the YAML includes:
 
 - Data structure - You can define fields which will be interpreted as table columns.
-- Built-in CRUD views - Save time writing RESTful CRUD views as Aurelix includes the usual GET, PUT, PATCH, DELETE functionalities, alongside a search URL with pagination.
+- Built-in CRUD views - Save time writing RESTful CRUD views as Aurelix includes the usual `GET`, `PUT`, `PATCH`, `DELETE` operations, alongside a search URL with pagination.
 - Custom views - Extend your app and model with custom views of your own, you can either reference to a function in a module, or you can just put the code in the YAML. 
 - OIDC integration - If you are using OIDC provider that provides OIDC 
 discoverability endpoint, you can use that OIDC provider for authentication.
