@@ -1,5 +1,27 @@
 # Aurelix: Low Code API Framework Based on FastAPI, Dectate and SQLAlchemy
 
+Aurelix is a low code framework for quickly building APIs for storing data and files. It is built on top of FastAPI and SQLAlchemy, and inherit some extension capabilities from Morepath's Dectate library, and pretty much a rewrite of all core ideas from MorpFW into a new framework to address deficiency and problems of the original implementation. 
+
+Aurelix uses YAML for define composable data models in declarative manner and interprets it into RESTful API that follows a degree of JSONAPI specification. 
+
+Capabilities definable through the YAML includes:
+
+- Data structure - You can define fields which will be interpreted as table columns.
+- Built-in CRUD views - Save time writing RESTful CRUD views as Aurelix includes the usual GET, PUT, PATCH, DELETE functionalities, alongside a search URL with pagination.
+- Custom views - Extend your app and model with custom views of your own, you can either reference to a function in a module, or you can just put the code in the YAML. 
+- OIDC integration - If you are using OIDC provider that provides OIDC 
+discoverability endpoint, you can use that OIDC provider for authentication.
+- Collection-wide permission filtering - You can specify role-specific `where` filters which will be applied to different roles to allow or prevent them from seeing specific sections of you data
+- Field permission filtering - You can specify role specific field permissions to limit access to fields (`readWrite`, `readOnly`, `restricted`) by role.
+- Field transformation chain - You can specify input and output transformation chain for fields, for example, to encrypt and decrypt data before storing into database.
+- Model transformation chain - Similar as field transformation chain, but this applies against the whole record.
+- Field validation chain - Register custom functions to validate field values when create/update.
+- Object storage integration - Use string field as object storage referencing field, which integrates with S3 based object storage for upload and download through presigned URLs.
+- State machine - Define state machine workflow chain for your model for state tracking, including custom functions to trigger on state change.
+- Event hooks - Register functions to be triggered on `create`, `update` and `delete` related events.
+
+Additionally, if you are a data engineer and need to have good management of your data model version and migration, Aurelix uses Alembic integration manage versioning of your data model.
+
 ## Installing
 
 Aurelix requires Python 3.11+
