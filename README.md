@@ -16,7 +16,7 @@ discoverability endpoint, you can use that OIDC provider for authentication.
 - Field transformation chain - You can specify input and output transformation chain for fields, for example, to encrypt and decrypt data before storing into database.
 - Model transformation chain - Similar as field transformation chain, but this applies against the whole record.
 - Field validation chain - Register custom functions to validate field values when create/update.
-- Object storage integration - Use string field as object storage referencing field, which integrates with S3 based object storage for upload and download through presigned URLs.
+- Object storage integration - Use string field as object storage referencing field, which integrates with S3/MinIO based object storage for upload and download through presigned URLs.
 - State machine - Define state machine workflow chain for your model for state tracking, including custom functions to trigger on state change.
 - Event hooks - Register functions to be triggered on `create`, `update` and `delete` related events.
 
