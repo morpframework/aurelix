@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2b4 (unreleased)
+## 0.1.2b4 (2023-08-26)
 
 - validate & decode oidc token instead of blindly trusting it by querying userinfo endpoint
 - remove UserInfo class as a decoded token have sufficient identity information
