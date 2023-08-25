@@ -13,7 +13,7 @@ class ClientException(Exception):
 
 class APIClient(object):
 
-    def __init__(self, base_url: str, client_id: str | None = None, client_secret: str | None = None):
+    def __init__(self, base_url: str, client_id: str | None = None, client_secret: str | None = None, **kwargs):
         if base_url.endswith('/'):
             self.base_url = base_url[:-1]
         else:
@@ -23,7 +23,9 @@ class APIClient(object):
         self._token = None
         self._token_expiry = None
         self._scope = None
+        self.requests_extra = kwargs
         self.config: schema.WellKnownConfiguration = self.get_config()
+
 
     def url(self, path):
         if '://' in path:
@@ -86,11 +88,13 @@ class APIClient(object):
         return self._token
     
     def request(self, method, path, *args, **kwargs):
+        param = self.requests_extra
+        param.update(kwargs)
         url = self.url(path)
         if self.token:
-            kwargs.setdefault('headers', {})
-            kwargs['headers']['Authorization'] = self.token.token_type + ' ' + self.token.access_token
-        resp: requests.Response = getattr(requests, method.lower())(url, *args, **kwargs)
+            param.setdefault('headers', {})
+            param['headers']['Authorization'] = self.token.token_type + ' ' + self.token.access_token
+        resp: requests.Response = getattr(requests, method.lower())(url, *args, **param)
         if resp.status_code != 200:
             try:
                 data = resp.json()
@@ -385,8 +389,8 @@ class Collection(object):
 
 class Client(object):
 
-    def __init__(self, base_url: str, client_id: str|None = None, client_secret: str|None = None) -> None:
-        self.api: APIClient = APIClient(base_url, client_id, client_secret)
+    def __init__(self, base_url: str, client_id: str|None = None, client_secret: str|None = None, **kwargs) -> None:
+        self.api: APIClient = APIClient(base_url, client_id, client_secret, **kwargs)
 
     def authenticate(self, username: str, password: str):
         self.api.authenticate(username, password)
