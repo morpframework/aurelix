@@ -18,7 +18,7 @@ def get_oidc_configuration(request: fastapi.Request):
 
 OIDCConfiguration = typing.Annotated[schema.OIDCConfiguration, fastapi.Depends(get_oidc_configuration)]
 
-async def _get_token(request: fastapi.Request, oidc_settings: OIDCConfiguration):
+async def _get_token(request: fastapi.Request, oidc_settings: OIDCConfiguration) -> schema.OIDCAccessToken:
     if not oidc_settings:
         return None
 
@@ -53,7 +53,7 @@ async def _get_token(request: fastapi.Request, oidc_settings: OIDCConfiguration)
 
 class OAuth2Mixin(object):
 
-    async def __call__(self, request: fastapi.Request, oidc_settings: OIDCConfiguration) -> str:
+    async def __call__(self, request: fastapi.Request, oidc_settings: OIDCConfiguration) -> schema.OIDCAccessToken:
         return await _get_token(request, oidc_settings)
     
 class PasswordBearerScheme(OAuth2Mixin, OAuth2PasswordBearer):
