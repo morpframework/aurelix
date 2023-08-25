@@ -15,6 +15,7 @@ class AppState(typing.TypedDict):
     settings: schema.AppSpec
     oidc_settings: schema.OIDCConfiguration
     models: dict[str, schema.ModelSpec]
+    model_collections: dict[str, typing.Any] # aurelix.crud.base.BaseCollection
     views: typing.Any # aurelix.crud.base.ExtensibleViewsApp
     oidc_jwk_client: jwt.PyJWKClient
 

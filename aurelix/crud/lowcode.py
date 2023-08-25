@@ -158,20 +158,29 @@ def db_upgrade(app: App):
 
 
 def load_app_models(app: App, directory_path):
+    model_specs = {}
     for fn in glob.glob('*.yaml', root_dir=directory_path):
-        res = load_model_spec(app, os.path.join(directory_path, fn))
-        spec = res['spec']
+
+        with open(os.path.join(directory_path, fn)) as f:
+            model_spec = schema.ModelSpec.model_validate(yaml.safe_load(f))
+        model_specs[model_spec.name] = model_spec
+    state.APP_STATE[app]['models'] = model_specs
+
+    for n, spec in model_specs.items():
+        spec: schema.ModelSpec = spec
+        res = load_model_spec(app, spec)
         app.collection[snake_to_pascal(res['spec'].name)] = res['collection']
         app.collection[res['spec'].name] = res['collection']
 
         openapi_extra = {}
         if spec.tags:
             openapi_extra['tags'] = spec.tags
+        state.APP_STATE[app].setdefault('model_collections', {})
+        state.APP_STATE[app]['model_collections'][spec.name] = res['collection']
 
-        state.APP_STATE[app].setdefault('models', {})
-        state.APP_STATE[app]['models'][spec.name] = spec
-
-        register_collection(app, res['collection'], 
+    for name, col in state.APP_STATE[app]['model_collections'].items():
+        spec = state.APP_STATE[app]['models'][name]
+        register_collection(app, col, 
             listing_enabled=spec.views.listing.enabled,
             create_enabled=spec.views.create.enabled,
             read_enabled=spec.views.read.enabled,
@@ -181,10 +190,7 @@ def load_app_models(app: App, directory_path):
             max_page_size=spec.maxPageSize,
         )
 
-def load_model_spec(app: App, path: str):
-
-    with open(path) as f:
-        spec: schema.ModelSpec = schema.ModelSpec.model_validate(yaml.safe_load(f))
+def load_model_spec(app: App, spec: schema.ModelSpec):
 
     result = {'spec': spec}
     model_type = spec.storageType.name
@@ -200,6 +206,8 @@ def load_model_spec(app: App, path: str):
         result['collection'] = Collection
     else:
         raise exc.AurelixException("Unknown model type %s" % model_type)
+    
+    Collection.spec = spec
     validators = {'model': None, 'fields': {}}
     field_transformers = {'inputTransformers': {}, 'outputTransformers': {}}
     if spec.validators:
@@ -400,13 +408,18 @@ def generate_sqlalchemy_table(app, spec: schema.ModelSpec) -> sa.Table:
     for field_name, field_spec in spec.fields.items():
         c = get_sa_column(field_name, app_spec, field_spec)
         columns.append(c)
-        if field_spec.foreignKey:
-            constraints.append(
-                sa.ForeignKeyConstraint(
-                    [field_name],
-                    [field_spec.foreignKey]
+        if field_spec.relation:
+            if field_spec.relation.constraint:
+                relation_spec = state.APP_STATE[app]['models'][field_spec.relation.model]
+                if (relation_spec.storageType.name != 'sqlalchemy' and
+                    relation_spec.storageType.database != spec.storageType.database):
+                    raise exc.AurelixException("Unable to set foreign key constraint across different storage type or database")
+                constraints.append(
+                    sa.ForeignKeyConstraint(
+                        [field_name],
+                        ['%s.%s' % (relation_spec.name,field_spec.relation.field)]
+                    )
                 )
-            )
 
     return create_table(
         spec.name,

@@ -30,6 +30,11 @@ class FieldTypeSpec(pydantic.BaseModel):
     options: dict[str, typing.Any] | None = None
     sa_options: dict[str, object] | None = None
 
+class FieldRelationSpec(pydantic.BaseModel):
+    model: str
+    field: str
+    constraint: bool = True
+
 class FieldSpec(pydantic.BaseModel):
     title: str
     dataType: FieldTypeSpec
@@ -37,7 +42,7 @@ class FieldSpec(pydantic.BaseModel):
     default: typing.Any = None
     indexed: bool = False
     unique: bool = False
-    foreignKey: str | None = None
+    relation: FieldRelationSpec | None = None
     validators: list[CodeRefSpec] | None = None
     inputTransformers: list[CodeRefSpec] | None = None
     outputTransformers: list[CodeRefSpec] | None = None

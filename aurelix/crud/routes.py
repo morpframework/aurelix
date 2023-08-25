@@ -13,7 +13,27 @@ from fastapi.responses import RedirectResponse
 from ..dependencies import Token
 from .dependencies import Model
 from ..utils import snake_to_pascal, snake_to_human, item_json
+from .. import state
 
+class RelationshipMeta(pydantic.BaseModel):
+    identifier: str 
+    collection: str
+
+def generate_relationship_model(name, app, collection_name):
+    spec: schema.ModelSpec = state.APP_STATE[app]['models'][collection_name]
+    attrs = {}
+    for field_name, field in spec.fields.items():
+        if field.relation:
+            col: BaseCollection = state.APP_STATE[app]['model_collections'][field.relation.model]
+            Schema = pydantic.create_model(snake_to_pascal(field.relation.model) + 'Links',
+                data = (col.Schema, None),
+                links = (schema.ModelResultLinks, None),
+                meta = (RelationshipMeta, None)
+            )
+            attrs[field_name] = (typing.Optional[Schema], None)
+    if not attrs:
+        return None
+    return pydantic.create_model(name, **attrs)
 
 def register_collection(app, Collection: type[BaseCollection], create_enabled=True, read_enabled=True, 
                         update_enabled=True, delete_enabled=True, listing_enabled=True, upload_enabled=True,
@@ -25,13 +45,21 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
     Schema = Collection.Schema
     base_path = '/%s' % collection_name
 
+    ModelRelation = generate_relationship_model(snake_to_pascal(collection_name) + 'ModelRelation', app, collection_name) 
+
+    model_attrs = {
+        'type': (str, None),
+        'id': (int, None),
+        'attributes': (Schema, None),
+        'links': (typing.Optional[schema.ModelResultLinks], None)
+    }
+
+    if ModelRelation:
+        model_attrs['relationships'] = (ModelRelation, None)
 
     ModelData = pydantic.create_model(
         snake_to_pascal(collection_name) + 'ModelData',
-        type = (str, None),
-        id = (int, None),
-        attributes = (Schema, None),
-        links = (typing.Optional[schema.ModelResultLinks], None)
+        **model_attrs
     )
 
     ModelSearchResult = pydantic.create_model(

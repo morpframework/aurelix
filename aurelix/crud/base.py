@@ -79,6 +79,7 @@ class ExtensibleViewsApp(dectate.App):
  
 class BaseCollection(ExtensibleViewsApp):
     name: str
+    spec: schema.ModelSpec
     Schema: type[pydantic.BaseModel]
     StateMachine: type[StateMachine]
     permissionFilters: list[schema.PermissionFilterSpec]
@@ -119,7 +120,9 @@ class BaseCollection(ExtensibleViewsApp):
         return await self._get_by_field('id', id, secure)
 
     @validate_types
-    async def get(self, identifier: str, secure: bool=True) -> pydantic.BaseModel:
+    async def get(self, identifier: str | int, secure: bool=True) -> pydantic.BaseModel:
+        if isinstance(identifier, int):
+            return await self._get_by_field('id', identifier, secure)
         if 'name' in self.Schema.model_fields.keys():
             return await self._get_by_field('name', identifier, secure)
         try:

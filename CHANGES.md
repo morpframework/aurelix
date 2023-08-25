@@ -2,10 +2,9 @@
 
 ## 0.1.2b4 (unreleased)
 
-
 - validate & decode oidc token instead of blindly trusting it by querying userinfo endpoint
 - remove UserInfo class as a decoded token have sufficient identity information
-
+- added relationships object in model responses
 
 ## 0.1.2b3 (2023-08-24)
 
