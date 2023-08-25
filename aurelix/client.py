@@ -165,6 +165,12 @@ class Model(object):
         return self.data['links']['self']
 
     def __getitem__(self, key: str) -> typing.Any: 
+        if 'relationships' in self.data and key in self.data['relationships']:
+            rel = self.data['relationships'][key]
+            col = Collection(self.api, self.api.collections[rel['meta']['collection']])
+            item = col[rel['meta']['identifier']]
+            return item
+
         return self.data['attributes'][key]
 
     def update(self, data: dict):
