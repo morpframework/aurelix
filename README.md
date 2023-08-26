@@ -121,38 +121,7 @@ views:
         method: GET
         handler:
           function: myviews:myview
-
-stateMachine:
-  initialState: new
-  field: workflowStatus
-  states:
-    - value: new
-      label: New
-    - value: running
-      label: Processing
-    - value: completed
-      label: Completed
-    - value: failed
-      label: Failed
-    - value: terminated
-      label: Cancelled
-  transitions:
-    - trigger: start
-      label: Start
-      source: new
-      dest: running
-    - trigger: stop
-      label: Stop
-      source: running
-      dest: terminated
-    - trigger: complete
-      label: Mark as completed
-      source: running
-      dest: completed
-    - trigger: fail
-      label: Mark as failed
-      source: runnning
-      dest: failed
+          
 tags:
   - custom tag
 ```
