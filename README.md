@@ -318,6 +318,7 @@ permissionFilters: # permission filtering rules. it is evaluated from top to bot
 views: # views registry for the model
   listing:
     enabled: true
+    maxPageSize: 100
   create:
     enabled: true
   read:

@@ -67,9 +67,12 @@ class ExtensionViewSpec(pydantic.BaseModel):
     openapi_extra: dict[str, typing.Any] | None = None
     handler: CodeRefSpec = pydantic.Field(description='Function spec to handle this view')
 
+class ListingViewSpec(ViewSpec):
+    maxPageSize: int = pydantic.Field(100, description='Maximum number of items in listing pages')
+
 class ModelViewsSpec(pydantic.BaseModel):
 
-    listing: ViewSpec = pydantic.Field(default_factory=ViewSpec)
+    listing: ListingViewSpec = pydantic.Field(default_factory=ListingViewSpec)
     create: ViewSpec = pydantic.Field(default_factory=ViewSpec)
     read: ViewSpec = pydantic.Field(default_factory=ViewSpec)
     update: ViewSpec = pydantic.Field(default_factory=ViewSpec)
@@ -142,7 +145,7 @@ class ModelSpec(pydantic.BaseModel):
     transformOutputData: list[CodeRefSpec] | None = pydantic.Field(None, description='Transform hook, before item is returned for display')
     permissionFilters: list[PermissionFilterSpec] | None = pydantic.Field(None, description='Permission rules for rows and field security')
     validators: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, for validating model before insert/update into database')
-    maxPageSize: int = pydantic.Field(100, description='Maximum number of items in listing pages')
+
 
 class DatabaseSpec(pydantic.BaseModel):
 

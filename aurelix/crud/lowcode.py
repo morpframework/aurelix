@@ -187,7 +187,7 @@ def load_app_models(app: App, directory_path):
             update_enabled=spec.views.update.enabled,
             delete_enabled=spec.views.delete.enabled,
             openapi_extra=openapi_extra,
-            max_page_size=spec.maxPageSize,
+            max_page_size=spec.views.listing.maxPageSize,
         )
 
 def load_model_spec(app: App, spec: schema.ModelSpec):
