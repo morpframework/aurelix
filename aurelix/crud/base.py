@@ -228,8 +228,8 @@ class BaseCollection(ExtensibleViewsApp):
             result[v].append(k)
         return result
  
-    async def _transform_output_data(self, item: dict) -> dict:
-        return item
+    async def _transform_output_data(self, data: dict) -> dict:
+        return data
     
     async def transform_output_data(self, item: pydantic.BaseModel) -> dict:
 
@@ -250,14 +250,14 @@ class BaseCollection(ExtensibleViewsApp):
 
         return await self._transform_output_data(data)
 
-    async def _transform_create_data(self, item: dict, secure: bool = True) -> dict:
-        return item
+    async def _transform_create_data(self, data: dict, secure: bool = True) -> dict:
+        return data
     
     async def apply_validators(self, data: dict):
         data = data.copy()
         if self.validators.fields:
             for fname, fvalidator in self.validators.fields.items():
-                await fvalidator(self, data, data[fname])
+                await fvalidator(self, data[fname], data)
         if self.validators.model:
             await self.validators.model(self, data)
 

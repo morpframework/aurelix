@@ -5,6 +5,7 @@ import os
 import asyncio
 from .api import load_app
 from . import schema
+from .settings import Settings
 from alembic import command as alembic_command
 from alembic import config as alembic_config
 import yaml
@@ -73,10 +74,10 @@ def main(argv=None):
     argv = argv or sys.argv[1:]
     parser = argparse.ArgumentParser()
 
+
     subparsers = parser.add_subparsers(dest='command')
     run_command = subparsers.add_parser('run')
 
-    run_command.add_argument('-c', '--config', default=os.environ.get('AURELIX_CONFIG'))
     run_command.add_argument('-l', '--host', default='127.0.0.1')
     run_command.add_argument('-p', '--port', type=int, default=8000)
 
@@ -93,11 +94,12 @@ def main(argv=None):
 
 
     if args.command == 'run':
-        if not args.config:
-            print('AURELIX_CONFIG environment is not set, and no config specified', file=sys.stderr)
+        settings = Settings()
+        if not settings.CONFIG:
+            print('AURELIX_CONFIG environment is not set', file=sys.stderr)
             sys.exit(1)
-        os.environ['AURELIX_CONFIG'] = args.config
-        app = asyncio.run(load_app(args.config))
+        os.environ['AURELIX_CONFIG'] = settings.CONFIG
+        app = asyncio.run(load_app(settings.CONFIG))
         uvicorn.run(app, host=args.host, port=args.port)
     elif args.command == 'init':
         init_app(path=args.DIRECTORY)

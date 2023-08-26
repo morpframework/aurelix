@@ -174,9 +174,273 @@ $ aurelix run -l 0.0.0.0
 
 ## Configuration Spec
 
+Aurelix works around YAML configuration for composing your application and models. This allows decoupling between the framework and the apps and also can pave the way for further automation in YAML generation.
+
+### App Configuration
+
+`app.yaml` defines metadata about the application, which includes the FastAPI's app metadata (app title, summary, toc, swagger UI init oauth config), list of databases the application will connect to, and list of view functions to be registered at the root of the app. Following example shows some of the options can be defined on `app.yaml`
+
+```yaml
+title: Application
+summary: My sample app
+version: 0.1.0
+terms_of_service: 
+model_directory: models # directory to model YAML spec, relative to app.yaml
+libs_directory: libs # directory to libs directory, relative to app.yaml
+databases: # sqlalchemy database connections to create for the app
+  - name: default 
+    url: sqlite:///./database.sqlite
+swagger_ui_init_oauth: # set this if you want to 
+  client_id: # oidc client ID for swagger UI
+  client_secret: # oidc client secret for swagger UI
+oidc_discovery_endpoint: # url to .well-known/openid-configuration of OIDC provider to use as external token provider
+views: 
+  extensions: # view registry on the root of the app. use this place add views on your app that is not attached to a model
+    '/+hello':
+      method: 'GET'
+      handler:
+        code: |
+          def function(request: Request):
+              return {'message': 'boo'}
+```
+
 For more details about `app.yaml` spec, checkout `AppSpec` in [configuration options](docs/config.md).
 
+### Model Configuration
+
+Model configuration is where the bulk of Aurelix capability is, as Aurelix generates API on top of data model specification.
+
+```yaml
+name: mymodel # name of the model, this translates to database table name for sqlalchemy storage
+storageType:
+  name: sqlalchemy # type of storage to use, for now we only have sqlalchemy
+  database: default # name of storage
+fields: # this contain the list of fields you want to have in your model. 
+  title:
+    title: Title 
+    dataType:
+      type: string
+      size: 128
+    required: true
+    default: null
+    indexed: false
+    unique: false
+    validators: # validator chain
+      - code: |
+          from aurelix import exc
+
+          def function(collection, value, data):
+              # collection: refers to collection object
+              # value: value of the field to validate
+              # data: refers to full model data to validate
+              if not value.startswith('prefix'):
+                 raise exc.ValidationError("Invalid title")
+      - function: mypackage.mymodule:myfunction # you can also specify reference to function in python module
+  encodedString: # you can transform field value before storing into db and when loading from db
+    title: Encoded string 
+    dataType:
+      type: string
+      size: 128
+    required: false
+    default: null
+    indexed: false
+    unique: false
+    inputTransformers: # input serialization transform chain before storing in database
+      - code: |
+          import base64
+          def function(collection, value, data):
+              return base64.b64encode(value.encode('utf8')).decode('utf8')
+    outputTransformers: # output deserialization transform chain before returning to user
+      - code: |
+          import base64
+          def function(collection, value, data):
+              return base64.b64decode(value.encode('utf8')).decode('utf8')
+  selectionField: # you can also specify enum fields
+    title: Selection field
+    dataType:
+      type: string
+      size: 128
+      enum: 
+        - value: option1
+          label: Option 1 Title
+        - value: option2
+          label: Option 2 Title
+  fileUpload:  # you can create a string field for referencing to object storage data. refer to objectStore option on the model level below
+    title: File Upload
+    dataType:
+      type: string
+      size: 128
+objectStore:  # this contains objectStore settings for each field
+  fileUpload: 
+    type: minio # type of object storage, we only support MinIO or MinIO compatible servers for now.
+    endpoint_url: http://localhost:9000 
+    bucket: mybucket 
+    access_key_env: S3_ACCESS_KEY # environment variable that stores the access key
+    secret_key_env: S3_SECRET_KEY # environment variable that stores the secret key
+
+validators: # validation chain on the model itself
+  - code: |
+      from aurelix import exc
+      
+      def function(collection, data):
+          # collection: refers to collection object
+          # data: refers to full model data to validate
+          pass
+
+defaultFieldPermission: readWrite # default permission to all fields
+permissionFilters: # permission filtering rules. it is evaluated from top to bottom
+
+  # row filtering by roles
+  - identities:
+      - 'role:mygroup'
+    whereFilter: title like '%postfix' # use SQL where statement here for sqlalchemy storage
+  - identities: 
+      - '*' # all identities
+    whereFilter: 0=1 
+
+  # column filtering by roles
+  - identities:
+      - 'role:group1'
+    defaultFieldPermission: restricted
+    readWriteFields:
+      - title
+    readOnlyFields:
+      - fileUpload
+  - identities:
+      - 'role:group2'
+    defaultFieldPermission: readWrite
+    restrictedFields:
+      - title
+  - identities:
+      - '*'
+    defaultFieldPermission: restricted
+
+views: # views registry for the model
+  listing:
+    enabled: true
+  create:
+    enabled: true
+  read:
+    enabled: true
+  update:
+    enabled: true
+  delete:
+    enabled: true
+  extensions: # custom views registry. views registered here is relative to the collection
+    '/+hello':
+      method: 'GET'
+      handler:
+        code: | # you can use fastapi dependency injection here
+          def function(request: Request, collection: Collection):
+              return {'message': 'collection view'}
+    '/{identifier}/+hello': # this view is attached to model
+      method: 'GET'
+      handler:
+        code: | # you can use fastapi dependency injection here
+          def function(request: Request, collection: Collection, model: Model):
+              return {'message': 'model view'}
+tags: 
+  - mytag # openapi tag to group all views as
+stateMachine: # if you want statemachine on +transition view, configure it here. it uses pytransition internally.
+  initialState: new
+  field: workflowStatus
+  states:
+    - value: new
+      label: New
+    - value: running
+      label: Processing
+    - value: completed
+      label: Completed
+    - value: failed
+      label: Failed 
+      onEnter: # you can trigger functions on state enter/exit
+        code: |
+          from aurelix.crud.base import StateMachine
+
+          def function(sm: StateMachine):
+              request = sm.request
+              item = sm.item
+              # do something here
+      onExit: 
+        code: |
+          from aurelix.crud.base import StateMachine
+
+          def function(sm: StateMachine):
+              request = sm.request
+              item = sm.item              
+              # do something here
+    - value: terminated
+      label: Cancelled
+  transitions:
+    - trigger: start
+      label: Start
+      source: new
+      dest: running
+    - trigger: stop
+      label: Stop
+      source: running
+      dest: terminated
+    - trigger: complete
+      label: Mark as completed
+      source: running
+      dest: completed
+    - trigger: fail
+      label: Mark as failed
+      source: runnning
+      dest: failed
+
+beforeCreate: 
+  - code: |
+    def function(collection, data: dict):
+        # do something here
+        pass
+afterCreate: 
+  - code: |
+    def function(collection, item: Model):
+        # do something here
+        pass
+beforeUpdate: 
+  - code: |
+    def function(collection, data: dict):
+        # do something here
+        pass
+afterUpdate: 
+  - code: |
+    def function(collection, item: Model):
+        # do something here
+        pass
+beforeDelete: 
+  - code: |
+    def function(collection, item: Model):
+        # do something here
+        pass
+afterDelete: 
+  - code: |
+    def function(collection, data: dict):
+        # do something here
+        pass
+
+transformCreateData: 
+  - code: |
+    def function(collection, data: dict):
+        # do something here
+        return data
+
+transformUpdateData: 
+  - code: |
+    def function(collection, data: dict):
+        # do something here
+        return data
+transformOutputData: 
+  - code: |
+    def function(collection, data: dict):
+        # do something here
+        return data
+
+```
+
 For more details about model spec for `mymodel.yaml`, check out `ModelSpec` in [configuration options](docs/config.md)
+
 
 ## Client Library 
 

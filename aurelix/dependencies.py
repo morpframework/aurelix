@@ -10,6 +10,7 @@ from . import exc
 import jwt
 import httpx
 import traceback
+import yaml
 
 def get_oidc_configuration(request: fastapi.Request):
     app = request.app
@@ -63,24 +64,31 @@ env_settings = Settings()
 
 Token = typing.Annotated[str, fastapi.Depends(_get_token)]
 
-if env_settings.OIDC_DISCOVERY_ENDPOINT:
-    with httpx.Client() as client:
-        resp = client.get(env_settings.OIDC_DISCOVERY_ENDPOINT)
-        if resp.status_code != 200:
-            raise exc.AurelixException("Unable to query OIDC discovery endpoint")
-        _oidc_settings = schema.OIDCConfiguration.model_validate(resp.json())
+if env_settings.CONFIG:
+    with open(env_settings.CONFIG) as f:
+        _config = yaml.safe_load(f)
 
-    if env_settings.OIDC_SCHEME == 'password':
-        Token = typing.Annotated[str, 
-            fastapi.Depends(
-                PasswordBearerScheme(
-                    tokenUrl=_oidc_settings.token_endpoint, 
-                    scopes=dict((k,k) for k in _oidc_settings.scopes_supported)
+    _oidc_discovery_endpoint = _config.get('oidc_discovery_endpoint', None)
+    if _oidc_discovery_endpoint:
+        with httpx.Client() as client:
+            resp = client.get(_oidc_discovery_endpoint)
+            if resp.status_code != 200:
+                raise exc.AurelixException("Unable to query OIDC discovery endpoint")
+            _oidc_settings = schema.OIDCConfiguration.model_validate(resp.json())
+    
+        _oidc_scheme = _config.get('oidc_scheme', 'password')
+    
+        if _oidc_scheme == 'password':
+            Token = typing.Annotated[str, 
+                fastapi.Depends(
+                    PasswordBearerScheme(
+                        tokenUrl=_oidc_settings.token_endpoint, 
+                        scopes=dict((k,k) for k in _oidc_settings.scopes_supported)
+                    )
                 )
-            )
-        ]
-    else:
-        raise exc.AurelixException("Unsupported OIDC scheme %s" % env_settings.OIDC_SCHEME)
+            ]
+        else:
+            raise exc.AurelixException("Unsupported OIDC scheme %s" % _oidc_scheme)
     
 async def get_token(request: fastapi.Request) -> schema.OIDCAccessToken:
     oidc_settings = get_oidc_configuration(request)
