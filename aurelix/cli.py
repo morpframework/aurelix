@@ -11,6 +11,7 @@ from alembic import config as alembic_config
 import yaml
 from pathlib import Path
 import os
+import shutil
 
 pkgdir = Path(os.path.abspath(os.path.dirname(__file__)))
 
@@ -26,22 +27,20 @@ with open(pkgdir / 'default_templates' / 'model.yaml') as f:
     DEFAULT_MODEL_CONFIG = yaml.safe_load(f)
 
 def init_app(path: str):
+
+    path = Path(path)
     if not os.path.exists(path):
         os.mkdir(path)
     else:
         raise Exception('Path %s already exists' % path)
-    schema.AppSpec.model_validate(DEFAULT_APP_CONFIG)
-    app_yaml = yaml.safe_dump(DEFAULT_APP_CONFIG, sort_keys=False)
-    with open(os.path.join(path, 'app.yaml'), 'w') as f:
-        f.write(app_yaml)
+
+    shutil.copy(pkgdir / 'default_templates' / 'app.yaml', path / 'app.yaml')
+
     for d in ['models', 'libs']:
         os.mkdir(os.path.join(path, d))
 
     # create sample model yaml
-    schema.ModelSpec.model_validate(DEFAULT_MODEL_CONFIG)
-    model_yaml = yaml.safe_dump(DEFAULT_MODEL_CONFIG, sort_keys=False)
-    with open(os.path.join(path, 'models', 'mymodel.yaml'), 'w') as f:
-        f.write(model_yaml)
+    shutil.copy(pkgdir / 'default_templates' / 'model.yaml', path / 'models' / 'app.yaml')
 
     # create alembic.ini
     os.chdir(path)

@@ -8,7 +8,7 @@ libs_directory: libs # directory to libs directory, relative to app.yaml
 databases: # sqlalchemy database connections to create for the app
   - name: default 
     type: sqlalchemy
-    url: sqlite:////./database.sqlite
+    url: sqlite:///./database.sqlite
 #    url_env: DB_URL # environment variable that stores the database url
 #object_stores:
 #  - name: default
