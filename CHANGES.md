@@ -2,9 +2,8 @@
 
 ## 0.1.2b5 (unreleased)
 
-
-- Nothing changed yet.
-
+- Use snake case in configuration
+- Added simple unit tests
 
 ## 0.1.2b4 (2023-08-26)
 

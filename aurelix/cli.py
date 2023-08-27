@@ -9,52 +9,37 @@ from .settings import Settings
 from alembic import command as alembic_command
 from alembic import config as alembic_config
 import yaml
+from pathlib import Path
+import os
+
+pkgdir = Path(os.path.abspath(os.path.dirname(__file__)))
 
 class AlembicConfig(alembic_config.Config):
 
     def get_template_directory(self) -> str:
         return os.path.join(os.path.dirname(__file__), 'alembic_templates')
 
-DEFAULT_APP_CONFIG = {
-    'databases': [
-        {'name': 'default',
-         'url': 'sqlite:///./database.sqlite'}
-    ]
-}
+with open(pkgdir / 'default_templates' / 'app.yaml') as f:
+    DEFAULT_APP_CONFIG = yaml.safe_load(f)
 
-DEFAULT_MODEL_CONFIG = {
-    'name': 'mymodel',
-    'storageType': {
-        'name': 'sqlalchemy',
-        'database': 'default',
-    },
-    'fields': {
-        'title': {
-            'title': 'Title',
-            'dataType': {
-                'type': 'string',
-                'size': 128,
-                'required': True
-            }
-        }
-    },
-}
+with open(pkgdir / 'default_templates' / 'model.yaml') as f:
+    DEFAULT_MODEL_CONFIG = yaml.safe_load(f)
 
 def init_app(path: str):
     if not os.path.exists(path):
         os.mkdir(path)
     else:
         raise Exception('Path %s already exists' % path)
-    appspec = schema.AppSpec.model_validate(DEFAULT_APP_CONFIG)
-    app_yaml = yaml.safe_dump(appspec.model_dump(), sort_keys=False)
+    schema.AppSpec.model_validate(DEFAULT_APP_CONFIG)
+    app_yaml = yaml.safe_dump(DEFAULT_APP_CONFIG, sort_keys=False)
     with open(os.path.join(path, 'app.yaml'), 'w') as f:
         f.write(app_yaml)
     for d in ['models', 'libs']:
         os.mkdir(os.path.join(path, d))
 
     # create sample model yaml
-    model_spec = schema.ModelSpec.model_validate(DEFAULT_MODEL_CONFIG)
-    model_yaml = yaml.safe_dump(model_spec.model_dump(), sort_keys=False)
+    schema.ModelSpec.model_validate(DEFAULT_MODEL_CONFIG)
+    model_yaml = yaml.safe_dump(DEFAULT_MODEL_CONFIG, sort_keys=False)
     with open(os.path.join(path, 'models', 'mymodel.yaml'), 'w') as f:
         f.write(model_yaml)
 

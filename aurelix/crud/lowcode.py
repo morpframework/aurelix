@@ -136,7 +136,7 @@ async def load_app(path: str) -> fastapi.FastAPI:
             'db': db
         }
 
-    for o in spec.objectStores:
+    for o in (spec.objectStores or []):
         if o.endpoint_url:
             endpoint_url = o.endpoint_url
         elif o.endpoint_url_env:

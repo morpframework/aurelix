@@ -176,7 +176,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
                 }
             raise HTTPException(status_code=422, detail='Not Deleted')
         
-    if upload_enabled:
+    if upload_enabled and Collection.objectStore:
         @Collection.view('/{identifier}/file/{field}/+upload-url', method='GET', openapi_extra=openapi_extra, 
                         summary='Get presigned url to upload file to %s' % snake_to_human(collection_name))
         async def presigned_upload(request: Request, col: Collection, model: Model, 
@@ -186,7 +186,7 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
             return {
                 'url': url
             }
-    if download_enabled: 
+    if download_enabled and Collection.objectStore: 
         @Collection.view('/{identifier}/file/{field}', method='GET', openapi_extra=openapi_extra, 
                         responses={
                             307: {

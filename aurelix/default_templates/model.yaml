@@ -1,0 +1,91 @@
+name: mymodel # name of the model, this translates to database table name for sqlalchemy storage
+storage_type:
+  name: sqlalchemy # type of storage to use, for now we only have sqlalchemy
+  database: default # name of storage
+fields: # this contain the list of fields you want to have in your model. 
+  title:
+    title: Title 
+    data_type:
+      type: string
+      size: 128
+    required: true
+    default: null
+    indexed: false
+    unique: false
+default_field_permission: readWrite # default permission to all fields
+views: # views registry for the model
+  listing:
+    enabled: true
+    max_page_size: 100
+  create:
+    enabled: true
+  read:
+    enabled: true
+  update:
+    enabled: true
+  delete:
+    enabled: true
+  extensions: # custom views registry. views registered here is relative to the collection
+    '/+hello':
+      method: 'GET'
+      handler:
+        code: | # you can use fastapi dependency injection here
+          def function(request: Request, collection: Collection):
+              return {'message': 'collection view'}
+    '/{identifier}/+hello': # this view is attached to model
+      method: 'GET'
+      handler:
+        code: | # you can use fastapi dependency injection here
+          def function(request: Request, collection: Collection, model: Model):
+              return {'message': 'model view'}
+tags: 
+  - mytag # openapi tag to group all views as
+
+before_create: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          pass
+after_create: 
+  - code: |
+      def function(collection, item: Model):
+          # do something here
+          pass
+before_update: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          pass
+after_update: 
+  - code: |
+      def function(collection, item: Model):
+          # do something here
+          pass
+before_delete: 
+  - code: |
+      def function(collection, item: Model):
+          # do something here
+          pass
+after_delete: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          pass
+
+transform_create_data: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          return data
+  
+transform_update_data: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          return data
+transform_output_data: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          return data
+
