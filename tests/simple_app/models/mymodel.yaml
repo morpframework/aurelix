@@ -20,8 +20,10 @@ fields: # this contain the list of fields you want to have in your model.
               # collection: refers to collection object
               # value: value of the field to validate
               # data: refers to full model data to validate
+              if not value:
+                  return value
               if not value.startswith('prefix'):
-                 raise exc.ValidationError("Invalid title")
+                  raise exc.ValidationError("Invalid title")
   encodedString: # you can transform field value before storing into db and when loading from db
     title: Encoded string 
     data_type:

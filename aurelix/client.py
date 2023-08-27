@@ -156,8 +156,18 @@ class Model(object):
     
     def __init__(self, api: APIClient, collection: 'Collection', data):
         self.api = api
-        self.data = data
+        self._data = data
         self.collection = collection
+
+    def _get_data(self):
+        if not self._data:
+            raise ClientException("Object has been deleted")
+        return self._data
+    
+    def _set_data(self, value):
+        self._data = value
+
+    data = property(_get_data, _set_data)
 
     def url(self, path:str = None):
         if '://' in path:
@@ -188,7 +198,11 @@ class Model(object):
         self.put(json=attrs)
         self.data = self.get()['data']
         return True
-
+    
+    def refresh(self):
+        self.data = self.get()['data']
+        return True
+    
     def triggers(self):
         sm = self.collection.config.stateMachine
         current_state = self[sm.field]
@@ -243,7 +257,13 @@ class Model(object):
 
     def delete(self, path='/', *args, **kwargs):
         path = self.url(path)
-        return self.api.delete(path, *args, **kwargs)
+        if 'json' not in kwargs:
+            kwargs['json'] = {
+                'delete': True
+            }
+        res = self.api.delete(path, *args, **kwargs)
+        self.data = {}
+        return res
 
     def put(self, path='/', *args, **kwargs):
         path = self.url(path)
@@ -315,7 +335,7 @@ class Collection(object):
         self.config = config
 
     def url(self, path: str | int =None):
-        if '://' in path:
+        if '://' in str(path):
             return path
         if path:
             path = str(path)

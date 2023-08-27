@@ -114,7 +114,7 @@ class SQLACollection(BaseCollection):
             raise SearchException(str(e))
         return result[0]
 
-    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool = False, 
+    async def _update_by_field(self, field, value, item: dict, secure: bool=True, modify_object_store_fields: bool = False, 
                                modify_workflow_status: bool = False):
         data = await self.transform_update_data(item, secure=secure,
                                                 modify_object_store_fields=modify_object_store_fields,
@@ -124,7 +124,6 @@ class SQLACollection(BaseCollection):
         if secure:
             filters = await self.get_permission_filters()
             filters = [sa.text(f) for f in filters]
-
         filters.append(getattr(self.table.c, field)==value)
         async with self.db.transaction() as txn:
             query = self.table.update().where(sa.and_(*filters)).values(**data)

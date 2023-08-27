@@ -141,22 +141,22 @@ class BaseCollection(ExtensibleViewsApp):
         raise NotImplementedError
 
 
-    async def _update_by_field(self, field, value, item, secure: bool=True, modify_object_store_fields: bool=False, modify_workflow_status: bool =False):
+    async def _update_by_field(self, field, value, data: dict, secure: bool=True, modify_object_store_fields: bool=False, modify_workflow_status: bool =False):
         raise NotImplementedError
     
     @validate_types
-    async def update_by_id(self, id: int, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False, modify_workflow_status: bool= False):
-        return await self._update_by_field('id', id, item, secure, modify_object_store_fields,modify_workflow_status=modify_workflow_status)
+    async def update_by_id(self, id: int, data: dict, secure: bool = True, modify_object_store_fields: bool=False, modify_workflow_status: bool= False):
+        return await self._update_by_field('id', id, data, secure, modify_object_store_fields,modify_workflow_status=modify_workflow_status)
 
     @validate_types
-    async def update(self, identifier: str, item: pydantic.BaseModel, secure: bool = True, modify_object_store_fields: bool=False, modify_workflow_status: bool= False):
+    async def update(self, identifier: str, data: dict, secure: bool = True, modify_object_store_fields: bool=False, modify_workflow_status: bool= False):
         if 'name' in self.Schema.model_fields.keys():
             return await self._update_by_field('name', identifier, item, secure, modify_object_store_fields, modify_workflow_status=modify_workflow_status)
         try:
             identifier = int(identifier)
         except ValueError:
             return None
-        return await self.update_by_id(int(identifier), item, secure, modify_object_store_fields, modify_workflow_status=modify_workflow_status)
+        return await self.update_by_id(int(identifier), data, secure, modify_object_store_fields, modify_workflow_status=modify_workflow_status)
 
     async def _delete_by_field(self, field, value, secure: bool =True):
         raise NotImplementedError
@@ -250,7 +250,7 @@ class BaseCollection(ExtensibleViewsApp):
         for k in protected_fields:
             if k in data: 
                 if data[k]:
-                    raise exc.ValidationError('Field %s is protected' % k)
+                    del data[k]
 
         return await self._transform_output_data(data)
 
@@ -261,7 +261,8 @@ class BaseCollection(ExtensibleViewsApp):
         data = data.copy()
         if self.validators.fields:
             for fname, fvalidator in self.validators.fields.items():
-                await fvalidator(self, data[fname], data)
+                if fname in data:
+                    await fvalidator(self, data[fname], data)
         if self.validators.model:
             await self.validators.model(self, data)
 
@@ -269,7 +270,8 @@ class BaseCollection(ExtensibleViewsApp):
         data = data.copy()
         if self.fieldTransformers.inputTransformers:
             for field, transform in self.fieldTransformers.inputTransformers.items():
-                data[field] = await transform(self, data[field], data)
+                if field in data:
+                    data[field] = await transform(self, data[field], data)
         return data
 
     async def apply_field_output_transformers(self, data: dict):
@@ -345,12 +347,11 @@ class BaseCollection(ExtensibleViewsApp):
         data['dateModified'] = datetime.datetime.utcnow()
         return data
 
-    async def _transform_update_data(self, item: dict, secure: bool=True) -> dict:
-        return item
+    async def _transform_update_data(self, data: dict, secure: bool=True) -> dict:
+        return data
     
-    async def transform_update_data(self, item: pydantic.BaseModel, secure: bool=True, 
+    async def transform_update_data(self, data: dict, secure: bool=True, 
                                     modify_object_store_fields=False, modify_workflow_status: bool=False) -> dict:
-        data = item.model_dump()
         await self.apply_validators(data)
         data = await self.apply_field_input_transformers(data)
         data = await self._transform_update_data(data)
@@ -399,13 +400,15 @@ class BaseCollection(ExtensibleViewsApp):
             raise exc.NotFound("No such object store field %s" % field)
         item = await self.get(identifier)
         data = item.model_dump()
+        data = {
+            field: data[field]
+        }
         if data[field]:
             key = data[field]
         else:
             key = '%s-%s-%s' % (identifier, field, str(uuid.uuid4()))
             data[field] = key
-        item = self.Schema.model_validate(data)
-        await self.update(identifier, item, modify_object_store_fields=True)
+        await self.update(identifier, data, modify_object_store_fields=True)
         oss = self.objectStore[field]
         return await oss['objectStore'].get_presigned_upload_url(oss['bucket'], key)
     

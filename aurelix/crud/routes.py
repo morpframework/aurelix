@@ -154,12 +154,8 @@ def register_collection(app, Collection: type[BaseCollection], create_enabled=Tr
                 ModelPatchInput.model_validate(patch)
             except pydantic.ValidationError as e:
                 raise exc.ValidationError(e.errors())
-            src_item = await col.get(identifier)
-            item = ModelPatchInput.model_validate(src_item.model_dump())
-            for k, v in patch.items():
-                if hasattr(item, k):
-                    setattr(item, k, v)
-            item = await col.update(identifier, item)
+            item = ModelPatchInput.model_validate(patch)
+            item = await col.update(identifier, patch)
             return ModelResult.model_validate({'data': await item_json(col, item)})
         
         @Collection.view('/{identifier}', method='PUT', openapi_extra=openapi_extra, 
