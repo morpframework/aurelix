@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2b5 (unreleased)
+## 0.1.2b5 (2023-08-27)
 
 - Use snake case in configuration
 - Added simple unit tests
