@@ -86,7 +86,7 @@ def create_table(name, metadata, columns=None, indexes=None, constraints=None, *
         *args
     )
 
-async def load_app(path: str):
+async def load_app(path: str) -> fastapi.FastAPI:
 
     with open(path) as f:
         spec: schema.AppSpec = schema.AppSpec.model_validate(yaml.safe_load(f))
@@ -119,10 +119,16 @@ async def load_app(path: str):
 
     for d in spec.databases:
         metadata = sa.MetaData()
+        if d.url:
+            url = d.url
+        elif d.url_env:
+            url = os.environ[d.url_env]
+        else:
+            raise exc.AurelixException("Missing url or url_env")
         engine = sa.create_engine(
-            d.url, connect_args={"check_same_thread": False}
+            url, connect_args={"check_same_thread": False}
         )
-        db = databases.Database(d.url)
+        db = databases.Database(url)
         state.APP_STATE[app].setdefault('databases', {})
         state.APP_STATE[app]['databases'][d.name] = {
             'metadata': metadata,
@@ -131,6 +137,13 @@ async def load_app(path: str):
         }
 
     for o in spec.objectStores:
+        if o.endpoint_url:
+            endpoint_url = o.endpoint_url
+        elif o.endpoint_url_env:
+            endpoint_url = os.environ[o.endpoint_url_env]
+        else:
+            raise exc.AurelixException("Missing server endpoint")
+        
         if o.access_key:
             access_key = o.access_key
         elif o.access_key_env:
@@ -147,13 +160,18 @@ async def load_app(path: str):
 
         state.APP_STATE[app].setdefault('object_stores', {})
         state.APP_STATE[app]['object_stores'][o.name] = MinioS3(
-            o.endpoint_url, access_key, secret_key
+            endpoint_url, access_key, secret_key
         )
 
     if spec.model_directory:
         md_path = os.path.join(spec_dir, spec.model_directory)
         if os.path.exists(md_path):
             load_app_models(app, md_path)
+
+    for d in spec.databases:
+        dbconf = state.APP_STATE[app]['databases'][d.name]
+        if d.auto_initialize:
+            dbconf['metadata'].create_all(dbconf['engine'])
 
     env_settings = Settings()
     oidc_discovery_endpoint = spec.oidc_discovery_endpoint or env_settings.OIDC_DISCOVERY_ENDPOINT

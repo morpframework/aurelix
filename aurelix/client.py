@@ -88,7 +88,7 @@ class APIClient(object):
         return self._token
     
     def request(self, method, path, *args, **kwargs):
-        param = self.requests_extra
+        param = self.requests_extra.copy()
         param.update(kwargs)
         url = self.url(path)
         if self.token:

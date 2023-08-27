@@ -131,29 +131,36 @@ class ObjectStoreSpec(pydantic.BaseModel):
 
     name: str
     type: ObjectStoreType = str(ObjectStoreType.minio)
-    endpoint_url: str
+    endpoint_url: str | None = None
+    endpoint_url_env: str | None =None
     access_key_env: str | None = None
     secret_key_env: str | None = None
     access_key: str | None = None
     secret_key: str | None = None
 
 
-    @pydantic.validator('access_key',always=True)
-    def access_key_or_env(cls, v, values):
-        if not values.get('access_key_env') and not v:
+    @pydantic.model_validator(mode='before')
+    @classmethod
+    def _validate(cls,data):
+        if ((not (data.get('access_key_env') or data.get('access_key'))) or
+            data.get('access_key_env') and data.get('access_key')
+            ):
             raise ValueError("Either access_key or access_key_env is required")
-        return v
-        
-    @pydantic.validator('secret_key',always=True)
-    def secret_key_or_env(cls, v, values):
-        if not values.get('secret_key_env') and not v:
+        if ((not (data.get('secret_key_env') or data.get('secret_key'))) or
+            data.get('secret_key_env') and data.get('secret_key')
+            ):
             raise ValueError("Either secret_key or secret_key_env is required")
-        return v
+        if ((not (data.get('endpoint_url_env') or data.get('endpoint_url'))) or
+            data.get('endpoint_url_env') and data.get('endpoint_url')
+            ):
+            raise ValueError("Either endpoint_url or endpoint_url_env is required")
+        return data
+        
 
 
 class FieldObjectStoreSpec(pydantic.BaseModel):
 
-    objectStore: str = pydantic.Field(None, validation_alias=pydantic.AliasChoices('object_store', 'objectStore'))
+    objectStore: str = pydantic.Field(validation_alias=pydantic.AliasChoices('object_store', 'objectStore'))
     bucket: str
 
 class ModelSpec(pydantic.BaseModel):
@@ -195,10 +202,26 @@ class ModelSpec(pydantic.BaseModel):
     validators: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, for validating model before insert/update into database')
 
 
+class DatabaseType(enum.StrEnum):
+
+    sqlalchemy: str= 'sqlalchemy'
+
 class DatabaseSpec(pydantic.BaseModel):
 
     name: str
-    url: str 
+    type: DatabaseType = str(DatabaseType.sqlalchemy)
+    auto_initialize: bool = False
+    url: str | None = None
+    url_env: str | None = None
+
+    @pydantic.model_validator(mode='before')
+    @classmethod
+    def _validate(cls, data):
+        if ((not (data.get('url_env') or data.get('url'))) or
+            data.get('url_env') and data.get('url')
+            ):
+            raise ValueError("Either url or url_env is required")
+        return data
 
 class InitOAuthSpec(pydantic.BaseModel):
     client_id: str 
@@ -354,7 +377,7 @@ class WellKnownStateMachine(pydantic.BaseModel):
 class WellKnownCollection(pydantic.BaseModel):
     name: str
     jsonSchema: dict = pydantic.Field(alias='schema')
-    stateMachine: WellKnownStateMachine | None = pydantic.Field(
+    stateMachine: WellKnownStateMachine | None = pydantic.Field(None,
         validation_alias=pydantic.AliasChoices('state_machine', 'stateMachine')
     )
     links: dict[str, str]

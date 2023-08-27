@@ -24,8 +24,17 @@ SERVER_REQUIRES=[
     'pyjwt'
 ]
 
+PG_REQUIRES=[
+    'psycopg2-binary'
+]
+
 CLIENT_REQUIRES=[
     'requests',
+]
+
+TEST_REQUIRES=[
+    'pytest',
+    'pytest-server-fixtures[s3]'
 ]
 
 def read_file(name) -> str:
@@ -49,7 +58,8 @@ setup(name='aurelix',
       install_requires=CLIENT_REQUIRES,
       extras_require={
             'server': SERVER_REQUIRES,
-            'all': CLIENT_REQUIRES + SERVER_REQUIRES
+            'test': CLIENT_REQUIRES + SERVER_REQUIRES + PG_REQUIRES + TEST_REQUIRES,
+            'all': CLIENT_REQUIRES + SERVER_REQUIRES + PG_REQUIRES + TEST_REQUIRES
       },
       entry_points={
           'console_scripts': [

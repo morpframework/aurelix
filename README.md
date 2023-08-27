@@ -74,6 +74,7 @@ myproject/
 Contents of `app.yaml`:
 
 ```yaml
+spec_version: app/0.1
 title: MyApp
 databases:
   - name: default
@@ -95,6 +96,7 @@ Contents of `models/mymodel.yaml`. Automated API creation from model is where th
 
 
 ```yaml
+spec_version: model/0.1
 name: mymodel
 storageType:
   name: sqlalchemy
@@ -150,6 +152,7 @@ Aurelix works around YAML configuration for composing your application and model
 `app.yaml` defines metadata about the application, which includes the FastAPI's app metadata (app title, summary, toc, swagger UI init oauth config), list of databases the application will connect to, and list of view functions to be registered at the root of the app. Following example shows some of the options can be defined on `app.yaml`
 
 ```yaml
+spec_version: app/0.1
 title: Application
 summary: My sample app
 version: 0.1.0
@@ -160,15 +163,19 @@ databases: # sqlalchemy database connections to create for the app
   - name: default 
     type: sqlalchemy
     url: sqlite:///./database.sqlite
-objectStores:
+    # url_env: DB_URL # environment variable that stores the database url
+object_stores:
   - name: default
     type: minio # type of object storage, we only support MinIO or MinIO compatible servers for now.
     endpoint_url: http://localhost:9000 
-    access_key_env: S3_ACCESS_KEY # environment variable that stores the access key
-    secret_key_env: S3_SECRET_KEY # environment variable that stores the secret key
+    # endpoint_url_env: S3_ENDPOINT # environment variable that stores endpoint url
+    access_key: accesskey # object storage access key
+    secret_key: secretkey # object storage secret key
+    # access_key_env: S3_ACCESS_KEY # environment variable that stores the access key
+    # secret_key_env: S3_SECRET_KEY # environment variable that stores the secret key
 
 
-swagger_ui_init_oauth: # set this if you want to 
+swagger_ui_init_oauth: # set this if you want to enable swagger UI OIDC auth
   client_id: # oidc client ID for swagger UI
   client_secret: # oidc client secret for swagger UI
 oidc_discovery_endpoint: # url to .well-known/openid-configuration of OIDC provider to use as external token provider
@@ -190,13 +197,13 @@ Model configuration is where the bulk of Aurelix capability is, as Aurelix gener
 
 ```yaml
 name: mymodel # name of the model, this translates to database table name for sqlalchemy storage
-storageType:
+storage_type:
   name: sqlalchemy # type of storage to use, for now we only have sqlalchemy
   database: default # name of storage
 fields: # this contain the list of fields you want to have in your model. 
   title:
     title: Title 
-    dataType:
+    data_type:
       type: string
       size: 128
     required: true
@@ -216,19 +223,19 @@ fields: # this contain the list of fields you want to have in your model.
       - function: mypackage.mymodule:myfunction # you can also specify reference to function in python module
   encodedString: # you can transform field value before storing into db and when loading from db
     title: Encoded string 
-    dataType:
+    data_type:
       type: string
       size: 128
     required: false
     default: null
     indexed: false
     unique: false
-    inputTransformers: # input serialization transform chain before storing in database
+    input_transformers: # input serialization transform chain before storing in database
       - code: |
           import base64
           def function(collection, value, data):
               return base64.b64encode(value.encode('utf8')).decode('utf8')
-    outputTransformers: # output deserialization transform chain before returning to user
+    output_transformers: # output deserialization transform chain before returning to user
       - code: |
           import base64
           def function(collection, value, data):
@@ -245,7 +252,7 @@ fields: # this contain the list of fields you want to have in your model.
           label: Option 2 Title
   fileUpload:  # you can create a string field for referencing to object storage data. refer to objectStore option on the model level below
     title: File Upload
-    dataType:
+    data_type:
       type: string
       size: 128
 objectStore:  # this contains objectStore settings for each field
@@ -265,38 +272,38 @@ validators: # validation chain on the model itself
           # data: refers to full model data to validate
           pass
 
-defaultFieldPermission: readWrite # default permission to all fields
-permissionFilters: # permission filtering rules. it is evaluated from top to bottom
+default_field_permission: readWrite # default permission to all fields
+permission_filters: # permission filtering rules. it is evaluated from top to bottom
 
   # row filtering by roles
   - identities:
       - 'role:mygroup'
-    whereFilter: title like '%postfix' # use SQL where statement here for sqlalchemy storage
+    where_filter: title like '%postfix' # use SQL where statement here for sqlalchemy storage
   - identities: 
       - '*' # all identities
-    whereFilter: 0=1 
+    where_filter: 0=1 
 
   # column filtering by roles
   - identities:
       - 'role:group1'
-    defaultFieldPermission: restricted
-    readWriteFields:
+    default_field_permission: restricted
+    read_write_fields:
       - title
-    readOnlyFields:
+    read_only_fields:
       - fileUpload
   - identities:
       - 'role:group2'
-    defaultFieldPermission: readWrite
-    restrictedFields:
+    default_field_permission: readWrite
+    restricted_fields:
       - title
   - identities:
       - '*'
-    defaultFieldPermission: restricted
+    default_field_permission: restricted
 
 views: # views registry for the model
   listing:
     enabled: true
-    maxPageSize: 100
+    max_page_size: 100
   create:
     enabled: true
   read:
@@ -321,7 +328,7 @@ views: # views registry for the model
 tags: 
   - mytag # openapi tag to group all views as
 stateMachine: # if you want statemachine on +transition view, configure it here. it uses pytransition internally.
-  initialState: new
+  initial_state: new
   field: workflowStatus
   states:
     - value: new
@@ -332,7 +339,7 @@ stateMachine: # if you want statemachine on +transition view, configure it here.
       label: Completed
     - value: failed
       label: Failed 
-      onEnter: # you can trigger functions on state enter/exit
+      on_enter: # you can trigger functions on state enter/exit
         code: |
           from aurelix.crud.base import StateMachine
 
@@ -340,7 +347,7 @@ stateMachine: # if you want statemachine on +transition view, configure it here.
               request = sm.request
               item = sm.item
               # do something here
-      onExit: 
+      on_exit: 
         code: |
           from aurelix.crud.base import StateMachine
 
@@ -368,49 +375,49 @@ stateMachine: # if you want statemachine on +transition view, configure it here.
       source: runnning
       dest: failed
 
-beforeCreate: 
+before_create: 
   - code: |
       def function(collection, data: dict):
           # do something here
           pass
-afterCreate: 
+after_create: 
   - code: |
       def function(collection, item: Model):
           # do something here
           pass
-beforeUpdate: 
+before_update: 
   - code: |
       def function(collection, data: dict):
           # do something here
           pass
-afterUpdate: 
+after_update: 
   - code: |
       def function(collection, item: Model):
           # do something here
           pass
-beforeDelete: 
+before_delete: 
   - code: |
       def function(collection, item: Model):
           # do something here
           pass
-afterDelete: 
+after_delete: 
   - code: |
       def function(collection, data: dict):
           # do something here
           pass
 
-transformCreateData: 
+transform_create_data: 
   - code: |
       def function(collection, data: dict):
           # do something here
           return data
   
-transformUpdateData: 
+transform_update_data: 
   - code: |
       def function(collection, data: dict):
           # do something here
           return data
-transformOutputData: 
+transform_output_data: 
   - code: |
       def function(collection, data: dict):
           # do something here
