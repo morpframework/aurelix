@@ -12,7 +12,7 @@ import pydantic
 import importlib
 from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from .sqla import SQLACollection, EncryptedString
-from .base import StateMachine, ExtensibleViewsApp, BaseCollection
+from .base import StateMachine, ExtensibleViewsApp, BaseCollection, FieldObjectStore
 from .routes import register_collection
 from .dependencies import get_collection, Collection, Model, App
 from .minios3 import MinioS3
@@ -91,6 +91,8 @@ async def load_app(path: str):
     with open(path) as f:
         spec: schema.AppSpec = schema.AppSpec.model_validate(yaml.safe_load(f))
 
+    if spec.spec_version != 'app/0.1':
+        raise exc.AurelixException("Unsupported spec version %s" % spec.spec_version)
     spec_dir = os.path.dirname(path)
     init_oauth = {}
     if spec.swagger_ui_init_oauth:
@@ -127,6 +129,26 @@ async def load_app(path: str):
             'engine': engine,
             'db': db
         }
+
+    for o in spec.objectStores:
+        if o.access_key:
+            access_key = o.access_key
+        elif o.access_key_env:
+            access_key = os.environ[o.access_key_env]
+        else:
+            raise exc.AurelixException("Missing access key")
+
+        if o.secret_key:
+            secret_key = o.secret_key
+        elif o.secret_key_env:         
+            secret_key = os.environ[o.secret_key_env]
+        else:
+            raise exc.AurelixException("Missing secret key")
+
+        state.APP_STATE[app].setdefault('object_stores', {})
+        state.APP_STATE[app]['object_stores'][o.name] = MinioS3(
+            o.endpoint_url, access_key, secret_key
+        )
 
     if spec.model_directory:
         md_path = os.path.join(spec_dir, spec.model_directory)
@@ -229,12 +251,11 @@ def load_model_spec(app: App, spec: schema.ModelSpec):
     field_object_store = {}
     if spec.objectStore:
         for k,v in spec.objectStore.items():
-            if v.type == 'minio':
-                impl = MinioS3(endpoint_url=v.endpoint_url, bucket=v.bucket, 
-                               access_key_env=v.access_key_env, secret_key_env=v.secret_key_env)
-            else:
-                raise exc.AurelixException("Unknown object storage type %s" % v.type)
-            field_object_store[k] = impl
+            impl = state.APP_STATE[app]['object_stores'][v.objectStore]
+            field_object_store[k] = {
+                'bucket': v.bucket,
+                'objectStore': impl
+            }
     
     Collection.objectStore = field_object_store
     if spec.stateMachine:

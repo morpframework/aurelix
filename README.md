@@ -158,7 +158,16 @@ model_directory: models # directory to model YAML spec, relative to app.yaml
 libs_directory: libs # directory to libs directory, relative to app.yaml
 databases: # sqlalchemy database connections to create for the app
   - name: default 
+    type: sqlalchemy
     url: sqlite:///./database.sqlite
+objectStores:
+  - name: default
+    type: minio # type of object storage, we only support MinIO or MinIO compatible servers for now.
+    endpoint_url: http://localhost:9000 
+    access_key_env: S3_ACCESS_KEY # environment variable that stores the access key
+    secret_key_env: S3_SECRET_KEY # environment variable that stores the secret key
+
+
 swagger_ui_init_oauth: # set this if you want to 
   client_id: # oidc client ID for swagger UI
   client_secret: # oidc client secret for swagger UI
@@ -361,51 +370,51 @@ stateMachine: # if you want statemachine on +transition view, configure it here.
 
 beforeCreate: 
   - code: |
-    def function(collection, data: dict):
-        # do something here
-        pass
+      def function(collection, data: dict):
+          # do something here
+          pass
 afterCreate: 
   - code: |
-    def function(collection, item: Model):
-        # do something here
-        pass
+      def function(collection, item: Model):
+          # do something here
+          pass
 beforeUpdate: 
   - code: |
-    def function(collection, data: dict):
-        # do something here
-        pass
+      def function(collection, data: dict):
+          # do something here
+          pass
 afterUpdate: 
   - code: |
-    def function(collection, item: Model):
-        # do something here
-        pass
+      def function(collection, item: Model):
+          # do something here
+          pass
 beforeDelete: 
   - code: |
-    def function(collection, item: Model):
-        # do something here
-        pass
+      def function(collection, item: Model):
+          # do something here
+          pass
 afterDelete: 
   - code: |
-    def function(collection, data: dict):
-        # do something here
-        pass
+      def function(collection, data: dict):
+          # do something here
+          pass
 
 transformCreateData: 
   - code: |
-    def function(collection, data: dict):
-        # do something here
-        return data
-
+      def function(collection, data: dict):
+          # do something here
+          return data
+  
 transformUpdateData: 
   - code: |
-    def function(collection, data: dict):
-        # do something here
-        return data
+      def function(collection, data: dict):
+          # do something here
+          return data
 transformOutputData: 
   - code: |
-    def function(collection, data: dict):
-        # do something here
-        return data
+      def function(collection, data: dict):
+          # do something here
+          return data
 
 ```
 

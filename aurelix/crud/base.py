@@ -77,6 +77,10 @@ class ExtensibleViewsApp(dectate.App):
         # workaround with manual specification because this conflicts with pydantic
         yield 'view', cls.view
  
+class FieldObjectStore(typing.TypedDict):
+    bucket: str
+    objectStore: 'BaseObjectStore'
+
 class BaseCollection(ExtensibleViewsApp):
     name: str
     spec: schema.ModelSpec
@@ -86,7 +90,7 @@ class BaseCollection(ExtensibleViewsApp):
     defaultFieldPermission: schema.FieldPermission
     validators: ModelValidators
     fieldTransformers: ModelFieldTransformers
-    objectStore: dict[str, 'BaseObjectStore']
+    objectStore: dict[str, FieldObjectStore]
 
     @validate_types
     def __init__(self, request: fastapi.Request):
@@ -403,7 +407,7 @@ class BaseCollection(ExtensibleViewsApp):
         item = self.Schema.model_validate(data)
         await self.update(identifier, item, modify_object_store_fields=True)
         oss = self.objectStore[field]
-        return await oss.get_presigned_upload_url(key)
+        return await oss['objectStore'].get_presigned_upload_url(oss['bucket'], key)
     
     async def get_presigned_download_url(self, identifier, field) -> str:
         if field not in self.objectStore:
@@ -414,30 +418,22 @@ class BaseCollection(ExtensibleViewsApp):
         if not key:
             raise exc.NotFound("No object stored in field %s" % field)
         oss = self.objectStore[field]
-        return await oss.get_presigned_download_url(key)
+        return await oss['objectStore'].get_presigned_download_url(oss['bucket'], key)
 
     
 class BaseObjectStore(object):
 
-    def __init__(self, endpoint_url, bucket, access_key_env, secret_key_env):
+    def __init__(self, endpoint_url, access_key, secret_key):
         self.endpoint_url = endpoint_url
-        self.bucket = bucket
-        self.access_key_env = access_key_env
-        self.secret_key_env = secret_key_env
+        self.access_key = access_key
+        self.secret_key = secret_key
 
-    async def get_presigned_upload_url(self, key) -> str:
+    async def get_presigned_upload_url(self, bucket, key) -> str:
         raise NotImplementedError
 
-    async def get_presigned_download_url(self, key) -> str:
+    async def get_presigned_download_url(self, bucket, key) -> str:
         raise NotImplementedError
 
     def get_client(self):
         raise NotImplementedError
     
-    @property
-    def access_key(self):
-        return os.environ[self.access_key_env]
-    
-    @property
-    def secret_key(self):
-        return os.environ[self.secret_key_env]

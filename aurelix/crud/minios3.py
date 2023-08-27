@@ -24,12 +24,12 @@ class MinioS3(BaseObjectStore):
             secure=secure
         )
 
-    async def get_presigned_upload_url(self, key):
+    async def get_presigned_upload_url(self, bucket, key):
         client = self.get_client()
-        presigned_url = client.get_presigned_url(method='PUT', bucket_name=self.bucket, object_name=key, expires=timedelta(seconds=600))
+        presigned_url = client.get_presigned_url(method='PUT', bucket_name=bucket, object_name=key, expires=timedelta(seconds=600))
         return presigned_url
 
-    async def get_presigned_download_url(self, key):
+    async def get_presigned_download_url(self, bucket, key):
         client = self.get_client()
-        presigned_url = client.get_presigned_url(method='GET', bucket_name=self.bucket, object_name=key, expires=timedelta(seconds=600))
+        presigned_url = client.get_presigned_url(method='GET', bucket_name=bucket, object_name=key, expires=timedelta(seconds=600))
         return presigned_url

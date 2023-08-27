@@ -18,6 +18,7 @@ class AppState(typing.TypedDict):
     model_collections: dict[str, typing.Any] # aurelix.crud.base.BaseCollection
     views: typing.Any # aurelix.crud.base.ExtensibleViewsApp
     oidc_jwk_client: jwt.PyJWKClient
+    object_stores: dict[str, typing.Any] # aurelix.crud.base.BaseObjectStore
 
 APP_STATE: dict[fastapi.FastAPI, AppState] = {}
 
