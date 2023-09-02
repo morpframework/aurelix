@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2b6 (unreleased)
+## 0.1.2b6 (2023-09-02)
 
 - Added missing manifest inclusion for yaml based init templates
 
