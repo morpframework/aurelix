@@ -54,7 +54,8 @@ And start it using
 $ cd myproject/
 $ alembic revision --autogenerate -m "initial model"
 $ alembic upgrade head
-$ aurelix run -c app.yaml
+$ export AURELIX_CONFIG=app.yaml
+$ aurelix run 
 ```
 
 ## Example app
