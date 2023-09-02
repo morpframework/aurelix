@@ -2,9 +2,7 @@
 
 ## 0.1.2b6 (unreleased)
 
-
-- Nothing changed yet.
-
+- Added missing manifest inclusion for yaml based init templates
 
 ## 0.1.2b5 (2023-08-27)
 
