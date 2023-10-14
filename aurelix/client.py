@@ -326,7 +326,7 @@ class SearchResult(object):
     
     @property
     def total_records(self) -> int:
-        return self.result['meta']['total_pages']
+        return self.result['meta']['total_records']
 
 class Collection(object):
 

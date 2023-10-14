@@ -12,6 +12,7 @@ import pydantic
 import importlib
 from ..utils import validate_types, snake_to_pascal, snake_to_camel
 from .sqla import SQLACollection, EncryptedString
+from .asyncsqla import AsyncSQLACollection
 from .base import StateMachine, ExtensibleViewsApp, BaseCollection, FieldObjectStore
 from .routes import register_collection
 from .dependencies import get_collection, Collection, Model, App
@@ -236,7 +237,7 @@ def load_model_spec(app: App, spec: schema.ModelSpec):
     model_type = spec.storageType.name
     Schema = generate_pydantic_model(spec,name=snake_to_pascal(spec.name))
     result['schema'] = Schema
-    if model_type == 'sqlalchemy':
+    if model_type in ['sqlalchemy', 'sqlalchemy-async']:
         table = generate_sqlalchemy_table(app, spec)
         result['table'] = table
         Collection = generate_sqlalchemy_collection(
@@ -382,8 +383,15 @@ def generate_sqlalchemy_collection(app: App,
                                    name: str='Collection'):
 
     database = state.APP_STATE[app]['databases'][spec.storageType.database]['db']
-    def constructor(self, request):
-        SQLACollection.__init__(self, request, database=database, table=table)
+    engine = state.APP_STATE[app]['databases'][spec.storageType.database]['engine']
+    if spec.storageType.name == 'sqlalchemy':
+        BaseClass = SQLACollection
+        def constructor(self, request):
+            SQLACollection.__init__(self, request, engine=engine, table=table)
+    elif spec.storageType.name == 'sqlalchemy-async':
+        BaseClass = AsyncSQLACollection
+        def constructor(self, request):
+            AsyncSQLACollection.__init__(self, request, database=database, table=table)
 
     attrs = {
         'name': spec.name,
@@ -412,7 +420,7 @@ def generate_sqlalchemy_collection(app: App,
     async def _get_collection(request: fastapi.Request):
         return await get_collection(request)
     
-    return typing.Annotated[type(name, (SQLACollection, ), attrs), fastapi.Depends(_get_collection)]
+    return typing.Annotated[type(name, (BaseClass, ), attrs), fastapi.Depends(_get_collection)]
 
 @validate_types
 def generate_pydantic_model(spec: schema.ModelSpec, name: str = 'Schema'):

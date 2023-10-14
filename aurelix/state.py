@@ -12,6 +12,7 @@ class DatabaseState(typing.TypedDict):
 
 class AppState(typing.TypedDict):
     databases: dict[str, DatabaseState]
+    db_engines: dict[str, sa.engine.Engine]
     settings: schema.AppSpec
     oidc_settings: schema.OIDCConfiguration
     models: dict[str, schema.ModelSpec]

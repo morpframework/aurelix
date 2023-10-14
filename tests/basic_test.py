@@ -8,13 +8,8 @@ import io
 import boto3
 import time
 
-def test_load_app(aurelix: Client, s3_server: s3.MinioServer, s3_bucket):
+def _coll_test(model_col):
 
-    client = s3_server.get_s3_client()
-    client.create_bucket(Bucket='mybucket')
-
-    
-    model_col = aurelix['mymodel']
     
     o = model_col.create(dict(
         title='prefix 1111',
@@ -75,7 +70,7 @@ def test_load_app(aurelix: Client, s3_server: s3.MinioServer, s3_bucket):
     assert o['encodedString'] == 'hello world'
 
     assert o['selectionField'] == 'option2'
-    o = aurelix['mymodel'].get_item(o['id'])
+    o = model_col.get_item(o['id'])
     assert o['title'] == 'prefix 1111'
     assert o['encodedString'] == 'hello world'
 
@@ -86,3 +81,15 @@ def test_load_app(aurelix: Client, s3_server: s3.MinioServer, s3_bucket):
 
     with pytest.raises(ClientException) as excinfo:
         o['encodedString']
+def test_load_app(aurelix: Client, s3_server: s3.MinioServer, s3_bucket):
+
+    client = s3_server.get_s3_client()
+    client.create_bucket(Bucket='mybucket')
+
+    model_col = aurelix['mymodel']
+
+    _coll_test(model_col)
+
+    model_col_async = aurelix['mymodel_async']
+
+    _coll_test(model_col_async)

@@ -1,0 +1,202 @@
+name: mymodel_async # name of the model, this translates to database table name for sqlalchemy storage
+storage_type:
+  name: sqlalchemy-async # type of storage to use, for now we only have sqlalchemy
+  database: default # name of storage
+fields: # this contain the list of fields you want to have in your model. 
+  title:
+    title: Title 
+    data_type:
+      type: string
+      size: 128
+    required: true
+    default: null
+    indexed: false
+    unique: false
+    validators: # validator chain
+      - code: |
+          from aurelix import exc
+
+          def function(collection, value, data):
+              # collection: refers to collection object
+              # value: value of the field to validate
+              # data: refers to full model data to validate
+              if not value:
+                  return value
+              if not value.startswith('prefix'):
+                  raise exc.ValidationError("Invalid title")
+  encodedString: # you can transform field value before storing into db and when loading from db
+    title: Encoded string 
+    data_type:
+      type: string
+      size: 128
+    required: false
+    default: null
+    indexed: false
+    unique: false
+    input_transformers: # input serialization transform chain before storing in database
+      - code: |
+          import base64
+          def function(collection, value, data):
+              if not value:
+                return value
+              return base64.b64encode(value.encode('utf8')).decode('utf8')
+    output_transformers: # output deserialization transform chain before returning to user
+      - code: |
+          import base64
+          def function(collection, value, data):
+              if not value:
+                return value
+              return base64.b64decode(value.encode('utf8')).decode('utf8')
+  selectionField: # you can also specify enum fields
+    title: Selection field
+    dataType:
+      type: string
+      size: 128
+      enum: 
+        - value: option1
+          label: Option 1 Title
+        - value: option2
+          label: Option 2 Title
+  fileUpload:  # you can create a string field for referencing to object storage data. refer to objectStore option on the model level below
+    title: File Upload
+    data_type:
+      type: string
+      size: 128
+objectStore:  # this contains objectStore settings for each field
+  fileUpload: 
+    object_store: default
+    bucket: mybucket 
+
+validators: # validation chain on the model itself
+  - code: |
+      from aurelix import exc
+      
+      def function(collection, data):
+          # collection: refers to collection object
+          # data: refers to full model data to validate
+          pass
+
+default_field_permission: readWrite # default permission to all fields
+views: # views registry for the model
+  listing:
+    enabled: true
+    max_page_size: 100
+  create:
+    enabled: true
+  read:
+    enabled: true
+  update:
+    enabled: true
+  delete:
+    enabled: true
+  extensions: # custom views registry. views registered here is relative to the collection
+    '/+hello':
+      method: 'GET'
+      handler:
+        code: | # you can use fastapi dependency injection here
+          def function(request: Request, collection: Collection):
+              return {'message': 'collection view'}
+    '/{identifier}/+hello': # this view is attached to model
+      method: 'GET'
+      handler:
+        code: | # you can use fastapi dependency injection here
+          def function(request: Request, collection: Collection, model: Model):
+              return {'message': 'model view'}
+tags: 
+  - mytag # openapi tag to group all views as
+stateMachine: # if you want statemachine on +transition view, configure it here. it uses pytransition internally.
+  initial_state: new
+  field: workflowStatus
+  states:
+    - value: new
+      label: New
+    - value: running
+      label: Processing
+    - value: completed
+      label: Completed
+    - value: failed
+      label: Failed 
+      on_enter: # you can trigger functions on state enter/exit
+        code: |
+          from aurelix.crud.base import StateMachine
+
+          def function(sm: StateMachine):
+              request = sm.request
+              item = sm.item
+              # do something here
+      on_exit: 
+        code: |
+          from aurelix.crud.base import StateMachine
+
+          def function(sm: StateMachine):
+              request = sm.request
+              item = sm.item              
+              # do something here
+    - value: terminated
+      label: Cancelled
+  transitions:
+    - trigger: start
+      label: Start
+      source: new
+      dest: running
+    - trigger: stop
+      label: Stop
+      source: running
+      dest: terminated
+    - trigger: complete
+      label: Mark as completed
+      source: running
+      dest: completed
+    - trigger: fail
+      label: Mark as failed
+      source: runnning
+      dest: failed
+
+before_create: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          pass
+after_create: 
+  - code: |
+      def function(collection, item: Model):
+          # do something here
+          pass
+before_update: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          pass
+after_update: 
+  - code: |
+      def function(collection, item: Model):
+          # do something here
+          pass
+before_delete: 
+  - code: |
+      def function(collection, item: Model):
+          # do something here
+          pass
+after_delete: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          pass
+
+transform_create_data: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          return data
+  
+transform_update_data: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          return data
+transform_output_data: 
+  - code: |
+      def function(collection, data: dict):
+          # do something here
+          return data
+

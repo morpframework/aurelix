@@ -16,35 +16,29 @@ import os
 
 from .base import BaseCollection
 from ..exc import SearchException
-import sqlalchemy as sa
 
-class SQLACollection(BaseCollection):
+class AsyncSQLACollection(BaseCollection):
 
     @validate_types
     def __init__(self, request: fastapi.Request, 
-                 engine: sa.engine.Engine, 
+                 database: databases.Database, 
                  table: sa.Table):
         self.path = '/' + self.name
         self.request = request
         self.table = table
-        self._txn = None
-        self.engine = engine
+        self.db = database
 
     @validate_types
     async def create(self, item: pydantic.BaseModel, secure=True, modify_object_store_fields=False, modify_workflow_status=False) -> pydantic.BaseModel:
         data = await self.transform_create_data(item, secure=secure, modify_object_store_fields=modify_object_store_fields,
                                                 modify_workflow_status=modify_workflow_status)
         await self.before_create(data)
-        with self.engine.begin() as txn:
-            self._txn = txn
+        async with self.db.transaction() as txn:
             query = self.table.insert().values(**data)
-            result = txn.execute(query)
-            new_id = result.inserted_primary_key[0]
+            new_id = await self.db.execute(query)
             item = await self.get_by_id(new_id, secure=secure)
-            self._txn = None
             if item is None:
                 raise exc.Forbidden("You are not allowed to create this object")
-
         await self.after_create(item)
         return item
 
@@ -56,13 +50,7 @@ class SQLACollection(BaseCollection):
 
         filters.append(getattr(self.table.c, field)==value)
         query = self.table.select().where(sa.and_(*filters))
-        if self._txn:
-            txn = self._txn
-        else:
-            txn = self.engine
-        res: sa.engine.CursorResult = txn.execute(query)
-        item: sa.engine.Row = res.fetchone()
-            
+        item = await self.db.fetch_one(query)
         if item == None:
             if secure:
                 insecure_item = await self._get_by_field(field, value, secure=False)
@@ -101,13 +89,7 @@ class SQLACollection(BaseCollection):
                 orderby.append(sa.text(column))
             db_query = db_query.order_by(*orderby)
         try:
-            if self._txn:
-                txn = self._txn
-            else:
-                txn = self.engine
-            res: sa.engine.CursorResult = txn.execute(query)
-            items: list[sa.engine.Row] = res.fetchall()
- 
+            items = await self.db.fetch_all(db_query)
         except Exception as e:
             raise SearchException(str(e))
         
@@ -127,13 +109,7 @@ class SQLACollection(BaseCollection):
         if filters:
             db_query = db_query.where(sa.and_(*filters))
         try:
-            if self._txn:
-                txn = self._txn
-            else:
-                txn = self.engine
-            res: sa.engine.CursorResult = txn.execute(db_query)
-            result: sa.engine.Row = res.fetchone()
- 
+            result = await self.db.fetch_one(db_query)
         except Exception as e:
             raise SearchException(str(e))
         return result[0]
@@ -149,12 +125,10 @@ class SQLACollection(BaseCollection):
             filters = await self.get_permission_filters()
             filters = [sa.text(f) for f in filters]
         filters.append(getattr(self.table.c, field)==value)
-        with self.engine.begin() as txn:
-            self._txn = txn
+        async with self.db.transaction() as txn:
             query = self.table.update().where(sa.and_(*filters)).values(**data)
-            res: sa.engine.CursorResult = txn.execute(query)
+            await self.db.execute(query)
             item = await self._get_by_field(field, value, secure)
-            self._txn = None
             if item is None:
                 raise exc.Forbidden("You are not allowed to update this object")
         await self.after_update(item)
@@ -172,45 +146,7 @@ class SQLACollection(BaseCollection):
             filters = [sa.text(f) for f in filters]
         filters.append(getattr(self.table.c, field)==value)
         query = self.table.delete().where(sa.and_(*filters))
-        if self._txn:
-            txn = self._txn
-        else:
-            txn = self.engine
-        txn.execute(query)
+        await self.db.execute(query)
         await self.after_delete(data)
         return True       
     
-
-from sqlalchemy_utils.types.encrypted import encrypted_type
-
-class EncryptedStringOptions(pydantic.BaseModel):
-    engine: str
-    key_env: str 
-
-class EncryptedString(object):
-    
-    def __init__(self, field_name, app_spec: schema.AppSpec, field_spec: schema.FieldSpec):
-        self.field_name = field_name
-        self.app_spec = app_spec
-        self.field_spec = field_spec
-        
-    def __call__(self, *args, **kwargs):
-        if self.field_spec.dataType.options == None:
-            raise exc.AurelixException("No options provided on 'encrypted-string' field '%s'" % self.field_name)
-        options = EncryptedStringOptions.model_validate(self.field_spec.dataType.options) 
-        engine_name = options.engine.lower()
-        opts = {}
-    
-        if engine_name == 'fernet':
-            opts['engine'] = encrypted_type.FernetEngine
-        elif engine_name == 'aes':
-            opts['engine'] = encrypted_type.AesEngine
-        elif engine_name == 'aes-gcm':
-            opts['engine'] = encrypted_type.AesGcmEngine
-        else:
-            raise exc.AurelixException("Unknown encryption engine %s" % engine_name)
-        
-        key = os.environ[options.key_env]
-        opts['key'] = key
-        
-        return sautils.types.StringEncryptedType(sa.String(*args, **kwargs), **opts)
