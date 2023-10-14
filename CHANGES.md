@@ -3,7 +3,8 @@
 ## 0.1.2b7 (unreleased)
 
 
-- Nothing changed yet.
+- Added non-async sqlalchemy storage type. Async sqlalchemy storage type is now renamed 
+  from `sqlalchemy` to `sqlalchemy-async`
 
 
 ## 0.1.2b6 (2023-09-02)
