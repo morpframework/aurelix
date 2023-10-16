@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.1.2b7'
+version = '0.1.2b8.dev0'
 
 SERVER_REQUIRES=[
     'dectate',
