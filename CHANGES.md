@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2b7 (unreleased)
+## 0.1.2b7 (2023-10-16)
 
 
 - Added non-async sqlalchemy storage type (sqlalchemy-sync). 
