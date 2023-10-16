@@ -30,9 +30,13 @@ import typing
 import transitions 
 import glob
 import databases
+import databases.core
 import datetime
 from .base import ModelValidators, ModelFieldTransformers
 import jwt
+import logging
+
+logger = logging.getLogger('aurelix.lowcode')
 
 PY_TYPES = {
     'string': str,
@@ -75,8 +79,8 @@ def create_table(name, metadata, columns=None, indexes=None, constraints=None, *
         sa.Column('id', sa.Integer, primary_key=True),
         sa.Column('dateCreated', sa.DateTime, default=datetime.datetime.utcnow, index=True),
         sa.Column('dateModified', sa.DateTime, default=datetime.datetime.utcnow, index=True),
-        sa.Column('creator', sa.String, nullable=True, index=True),
-        sa.Column('editor', sa.String, nullable=True, index=True),
+        sa.Column('creator', sa.String(128), nullable=True, index=True),
+        sa.Column('editor', sa.String(128), nullable=True, index=True),
     ] + columns
 
     return sa.Table(
@@ -126,10 +130,21 @@ async def load_app(path: str) -> fastapi.FastAPI:
             url = os.environ[d.url_env]
         else:
             raise exc.AurelixException("Missing url or url_env")
+        connect_args = {}
+
+        # FIXME: this check may be flaky
+        is_mssql = url.lower().startswith('mssql')
+        logger.warn('MSSQL support is limited to synchronous API')
+        if not is_mssql:
+            connect_args["check_same_thread"] = False
         engine = sa.create_engine(
-            url, connect_args={"check_same_thread": False}
+            url, connect_args=connect_args
         )
-        db = databases.Database(url)
+        db = None
+
+        # FIXME: this check may be flaky
+        if not is_mssql:
+            db = databases.Database(url)
         state.APP_STATE[app].setdefault('databases', {})
         state.APP_STATE[app]['databases'][d.name] = {
             'metadata': metadata,
