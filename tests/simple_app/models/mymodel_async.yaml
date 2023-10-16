@@ -1,6 +1,6 @@
 name: mymodel_async # name of the model, this translates to database table name for sqlalchemy storage
 storage_type:
-  name: sqlalchemy-async # type of storage to use, for now we only have sqlalchemy
+  name: sqlalchemy # type of storage to use, for now we only have sqlalchemy
   database: default # name of storage
 fields: # this contain the list of fields you want to have in your model. 
   title:

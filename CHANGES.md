@@ -3,8 +3,8 @@
 ## 0.1.2b7 (unreleased)
 
 
-- Added non-async sqlalchemy storage type. Async sqlalchemy storage type is now renamed 
-  from `sqlalchemy` to `sqlalchemy-async`
+- Added non-async sqlalchemy storage type (sqlalchemy-sync). 
+- MSSQL users must use the non-async storage type
 
 
 ## 0.1.2b6 (2023-09-02)

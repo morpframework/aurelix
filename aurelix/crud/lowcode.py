@@ -252,7 +252,7 @@ def load_model_spec(app: App, spec: schema.ModelSpec):
     model_type = spec.storageType.name
     Schema = generate_pydantic_model(spec,name=snake_to_pascal(spec.name))
     result['schema'] = Schema
-    if model_type in ['sqlalchemy', 'sqlalchemy-async']:
+    if model_type in ['sqlalchemy-sync', 'sqlalchemy']:
         table = generate_sqlalchemy_table(app, spec)
         result['table'] = table
         Collection = generate_sqlalchemy_collection(
@@ -399,11 +399,11 @@ def generate_sqlalchemy_collection(app: App,
 
     database = state.APP_STATE[app]['databases'][spec.storageType.database]['db']
     engine = state.APP_STATE[app]['databases'][spec.storageType.database]['engine']
-    if spec.storageType.name == 'sqlalchemy':
+    if spec.storageType.name == 'sqlalchemy-sync':
         BaseClass = SQLACollection
         def constructor(self, request):
             SQLACollection.__init__(self, request, engine=engine, table=table)
-    elif spec.storageType.name == 'sqlalchemy-async':
+    elif spec.storageType.name == 'sqlalchemy':
         BaseClass = AsyncSQLACollection
         def constructor(self, request):
             AsyncSQLACollection.__init__(self, request, database=database, table=table)
