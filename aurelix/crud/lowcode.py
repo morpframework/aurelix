@@ -42,21 +42,25 @@ PY_TYPES = {
     'string': str,
     'text': str,
     'integer': int,
+    'biginteger': int,
     'boolean': bool,
     'float': float,
     'datetime': datetime.datetime,
     'date': datetime.date,
-    'encrypted-string': str
+    'encrypted-string': str,
+    'json': dict
 }
 
 SA_TYPES={
     'string': sa.String,
     'text': sa.Text,
     'integer': sa.Integer,
+    'biginteger': sa.BigInteger,
     'boolean': sa.Boolean,
     'float': sa.Float,
     'datetime': sa.types.DateTime,
     'date': sa.types.Date,
+    'json': sautils.types.JSONType,
 }
 
 def get_sa_type_factory(field_name: str, app_spec: schema.AppSpec, field_spec: schema.FieldSpec):
@@ -473,7 +477,7 @@ def generate_sqlalchemy_table(app, spec: schema.ModelSpec) -> sa.Table:
         if field_spec.relation:
             if field_spec.relation.constraint:
                 relation_spec = state.APP_STATE[app]['models'][field_spec.relation.model]
-                if (relation_spec.storageType.name != 'sqlalchemy' and
+                if (relation_spec.storageType.name not in ['sqlalchemy', 'sqlalchemy-sync'] and
                     relation_spec.storageType.database != spec.storageType.database):
                     raise exc.AurelixException("Unable to set foreign key constraint across different storage type or database")
                 constraints.append(

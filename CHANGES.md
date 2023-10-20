@@ -3,7 +3,7 @@
 ## 0.1.2b8 (unreleased)
 
 
-- Nothing changed yet.
+- Added json field support
 
 
 ## 0.1.2b7 (2023-10-16)

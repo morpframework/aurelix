@@ -178,7 +178,7 @@ class ModelSpec(pydantic.BaseModel):
     views: ModelViewsSpec = pydantic.Field(default_factory=ModelViewsSpec, description='List of views this model have')
     tags: list[str] | None = pydantic.Field(default_factory=list, description='OpenAPI tag which this model shall be tagged under')
     stateMachine: StateMachineSpec | None = pydantic.Field(None, description='StateMachine specification for this model for workflow support',
-        validation_alias=pydantic.AliasChoices('state_machine'))
+        validation_alias=pydantic.AliasChoices('state_machine', 'stateMachine'))
     beforeCreate: list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, before item is insert into database',
         validation_alias=pydantic.AliasChoices('before_create', 'beforeCreate'))
     afterCreate:  list[CodeRefSpec] | None = pydantic.Field(None, description='Event hook, after item have been inserted into database',
