@@ -1,6 +1,6 @@
 # Changelog for Aurelix
 
-## 0.1.2b8 (unreleased)
+## 0.1.2b8 (2023-10-20)
 
 
 - Added json field support
